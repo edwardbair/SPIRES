@@ -1,3 +1,4 @@
+%sets up all needed paths for scagd
 if isunix
     nbroot = '/raid/sandbox/snowhydro/nbair/';
     jdroot = '/raid/sandbox/snowhydro/jdozier/MATLAB';
@@ -23,7 +24,6 @@ addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','SunPosition'));
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','TimeSpace'));
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','Mapping'));
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','MODIS_HDF'));
-% addpath(fullfile(jdroot,'JeffFunctionLib','Azure'));
 
 %deprecated twostream.m
 addpath(fullfile(jdroot,'JeffFunctionLib','RadiativeTransfer'),'-end');
