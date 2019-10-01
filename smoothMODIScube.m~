@@ -1,4 +1,4 @@
-function [smoothedCube,refl,solarZ,cloudmask,snowmask,weights]=...
+function [smoothedCube,refl,solarZ,cloudmask,snowmask,pxweights]=...
     smoothMODIScube(tile,matdates,hdfdir,topofile,snowR)
 %create time/space smoothed and gap filled (cloud-free) MOD09GA surface
 %reflectance
@@ -14,6 +14,9 @@ function [smoothedCube,refl,solarZ,cloudmask,snowmask,weights]=...
 %smoothedCube: smoothed and gap filled (cloud free) cube of MOD09GA values
 %refl: terrain-corrected MOD09GA w/ NaNs for clouds and other missing data
 %solarZ: solar zenith angles for cube
+%cloudmask: cloudmask cube, logical
+%snowmask: snowmask cube, logical
+%pxweights: weight cube for each pixel (all bands together), 0-1
 
 %get full directory listing for tile
 d=dir(fullfile(hdfdir,['*.' tile '.*.hdf']));
@@ -28,20 +31,19 @@ refl=NaN(sz);
 solarZ=NaN([sz(1) sz(2) sz(4)]);
 snowmask=false([sz(1) sz(2) sz(4)]);
 cloudmask=false([sz(1) sz(2) sz(4)]);
-weights=zeros([sz(1) sz(2) sz(4)]);
+pxweights=zeros([sz(1) sz(2) sz(4)]);
 bandweights=zeros(sz);
 
-parfor i=1:length(matdates)
-% for i=66:66
+for i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     m=regexp(d,['^MOD09GA.A' num2str(isodate) '\.*'],'once');
     m=~cellfun(@isempty,m);
     if any(m)
         f=fullfile(hdfdir,d{m});
-        %get 7 band reflectance
+        %get all band reflectance
         R=GetMOD09GA(f,'allbands'); 
         [~,aWeights,bWeights] = weightMOD09(f,topofile);
-        weights(:,:,i)=aWeights;
+        pxweights(:,:,i)=aWeights;
         bandweights(:,:,:,i)=bWeights{1};
         
         x=single(GetMOD09GA(f,'SolarZenith'));
@@ -49,50 +51,51 @@ parfor i=1:length(matdates)
             x = inpaint_nans(double(x),4);
         end
         solarZ(:,:,i)=imresize(x,[sz(1) sz(2)]);
-%         solarZ(:,:,i)=rasterReprojection(x,RefMatrix.RefMatrix_1km,...
-%             ProjectionStructure,ProjectionStructure,'rasterref',...
-%             RasterReference.RasterReference_500m);
+
         x=single(GetMOD09GA(f,'SolarAzimuth'));
         if any(isnan(x(:)))
             x = inpaint_nans(double(x),4);
         end
         solarAzimuth=imresize(x,[sz(1) sz(2)]);
-%         solarAzimuth=rasterReprojection(x,RefMatrix.RefMatrix_1km,...
-%             ProjectionStructure,ProjectionStructure,'rasterref',...
-%             RasterReference.RasterReference_500m);
 
         %correct reflectance
         Rc=normalizeReflectance(R,topofile,solarZ(:,:,i),solarAzimuth);
         %fix negative values
         Rc(Rc<0.001)=0.001;
+        %fix values > 1
+        Rc(Rc>=1)=0.999;
         %create cloud & snow masks
         [~,~,~,~, cloudScore, snowScore] =...
         filterCloudSnow(snowR, Rc, solarZ(:,:,i));
         
         S=GetMOD09GA(f,'state');
         mod09gacm=imresize(S.cloud==1,[sz(1) sz(2)]);
-        cm =  cloudScore > 0 & mod09gacm;
+        %cm =  cloudScore > 0 & mod09gacm;
+        red=Rc(:,:,1);
+        green=Rc(:,:,4);
+        blue=Rc(:,:,3);
+        swir=Rc(:,:,6);
+        HOT=blue-0.5.*red-0.08;
+        NDSI=(green-swir)./(green+swir);
+        
+        x=NDSI;
+        fillpx=isnan(x);
+        x(fillpx)=0;
+        o=runGabor(0:45:135,3,1,0.5,x);
+        o(fillpx)=0;
+        o2=rssq(o,3);
+        T=imadjust(o2,stretchlim(o2),[]);
+        
+        cm =  (T < 0.25 & mod09gacm) | (cloudScore > 0 & snowScore < 4);
         cloudmask(:,:,i)=cm;
-        %snowmask is likely or maybe snow via RT, but not part of cm
         sm=snowScore >= 2 & ~cm;
         snowmask(:,:,i)=sm;
         refl(:,:,:,i)=Rc;
+        
         fprintf('loaded, corrected, and created masks for tile:%s date:%i \n',...
             tile,isodate);
     end
 end
-
-%trim cloud mask
-%cloudmask=cloudPersistenceFilter(cloudmask,toomanycloudydays);
-
-%mark as cloud not snow if it doesnt persist long enough
-% trim snowmask using filter (since it can only trim)
-% snowmask_trim=snowPersistenceFilter(snowmask,fsca_nPersist,1);
-% add false positives for snow to cloudmask (snow didn't persist long
-% enough)
-% cloudmask=cloudmask | (snowmask & ~snowmask_trim);
-
-% snowmask=snowmask_trim;
 
 smoothedCube=NaN(size(refl));
 
@@ -102,7 +105,7 @@ for i=1:size(refl,3) % for each band
     bandcube(cloudmask)=NaN; %set all the clouds to NaN
     weights=squeeze(bandweights(:,:,i,:));
     weights(isnan(bandcube))=0;
-    smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights);
+    smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights,'mask',~watermask);
     t2=toc;
     fprintf('filled and smoothed band:%i in %g min\n',i,t2/60);
 end
