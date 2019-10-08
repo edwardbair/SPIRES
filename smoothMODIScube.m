@@ -1,5 +1,5 @@
 function [smoothedCube,refl,solarZ,cloudmask,pxweights]=...
-    smoothMODIScube(tile,matdates,hdfdir,topofile)
+    smoothMODIScube(tile,matdates,hdfdir,topofile,watermask)
 %create time/space smoothed and gap filled (cloud-free) MOD09GA surface
 %reflectance
 
@@ -34,7 +34,7 @@ cloudmask=false([sz(1) sz(2) sz(4)]);
 pxweights=zeros([sz(1) sz(2) sz(4)]);
 bandweights=zeros(sz);
 
-for i=10:length(matdates)
+parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     m=regexp(d,['^MOD09GA.A' num2str(isodate) '\.*'],'once');
     m=~cellfun(@isempty,m);
