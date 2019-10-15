@@ -1,7 +1,7 @@
-function out=smoothSCAGDcube(outloc,matdates,fsca_nPersist,...
-    grainradius_nPersist,fsca_thresh,watermask,topofile,el_cutoff)
-for i=1:length(matdates)
+function out=smoothSCAGDcube(outloc,matdates,...
+    grainradius_nPersist,watermask,topofile,el_cutoff)
 
+for i=1:length(matdates)
     dv=datevec(matdates(i));
     fname=fullfile(outloc,[datestr(dv,'yyyymm') '.mat']);
     m=matfile(fname);
@@ -17,24 +17,32 @@ for i=1:length(matdates)
     weights_t=single(m.weights(:,:,ind))./100;
     grainradius_t=single(m.grainradius(:,:,ind));
     dust_t=single(m.dust(:,:,ind)).*10^-11; %remove this later
-    
-    
+
     fsca(:,:,i)=fsca_t;
     weights(:,:,i)=weights_t;
     grainradius(:,:,i)=grainradius_t;
     dust(:,:,i)=dust_t;
 end
 
-t=grainradius > 1190 | (grainradius > 0 & grainradius < 50);
-grainmask=snowPersistenceFilter(grainradius < 150, grainradius_nPersist,1);
-fsca(t | grainmask)=NaN; 
-fsca=snowPersistenceFilter(fsca,fsca_nPersist,fsca_thresh);
-wm=repmat(watermask,[1 1 size(fsca,3)]);
+% t=grainradius > 1190 | (grainradius > 0 & grainradius < 50);
+% grainmask=snowPersistenceFilter(grainradius > 0 & grainradius < 150, ...
+%     grainradius_nPersist,1);
+% fsca(t | grainmask)=NaN; 
+% fsca=snowPersistenceFilter(fsca,fsca_nPersist,fsca_thresh);
+%create mask for cube where radius is > 50 & radius < 1190 for 7 or more days
 
 Z=GetTopography(topofile,'elevation');
 Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
-fsca(Zmask)=0;
+
+wm=repmat(watermask,[1 1 size(fsca,3)]);
+
+fsca(Zmask | wm) = 0;
+
+gmask=snowPersistenceFilter(grainradius > 50 & grainradius < 1190,...
+    grainradius_nPersist,1);
+
+fsca(~gmask & ~fsca==0)=NaN;
 
 newweights=weights;
 newweights(isnan(fsca))=0;
