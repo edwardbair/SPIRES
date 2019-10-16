@@ -1,5 +1,5 @@
-function out=smoothSCAGDcube(outloc,matdates,fsca_nPersist,...
-    grainradius_nPersist,fsca_thresh,watermask,topofile,el_cutoff)
+function out=smoothSCAGDcube(outloc,matdates,...
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh)
 
 for i=1:length(matdates)
     dv=datevec(matdates(i));
@@ -24,13 +24,6 @@ for i=1:length(matdates)
     dust(:,:,i)=dust_t;
 end
 
-% t=grainradius > 1190 | (grainradius > 0 & grainradius < 50);
-% grainmask=snowPersistenceFilter(grainradius > 0 & grainradius < 150, ...
-%     grainradius_nPersist,1);
-% fsca(t | grainmask)=NaN; 
-% fsca=snowPersistenceFilter(fsca,fsca_nPersist,fsca_thresh);
-%create mask for cube where radius is > 50 & radius < 1190 for 7 or more days
-
 Z=GetTopography(topofile,'elevation');
 Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
@@ -39,19 +32,34 @@ wm=repmat(watermask,[1 1 size(fsca,3)]);
 
 fsca(Zmask | wm) = 0;
 
+%create mask for cube where radius is > 50 & radius < 1190 for 7 or more days
+
 gmask=snowPersistenceFilter(grainradius > 50 & grainradius < 1190,...
     grainradius_nPersist,1);
 
+% set to NAN days that aren't in that mask but are not zero fsca
 fsca(~gmask & ~fsca==0)=NaN;
 
 newweights=weights;
 newweights(isnan(fsca))=0;
 %fill in and smooth NaNs
 fsca=smoothDataCube(fsca,newweights,'mask',~watermask);
+%get some small fsca values from smoothing - set to zero
+fsca(fsca<fsca_thresh)=0;
 fsca(wm)=NaN;
+
+% interpolate all grain radii where fsca is < 0.3
+
+lowfscamask=fsca<0.30;
+grainradius(lowfscamask)=NaN;
+%set weights for grain radius
+newweights(lowfscamask)=0;
 
 grainradius=smoothDataCube(grainradius,newweights,'mask',~watermask);
 grainradius(fsca==0 | isnan(fsca))=NaN;
+
+dust(lowfscamask)=NaN;
+%set weights for grain radius
 
 dust=smoothDataCube(dust,newweights,'mask',~watermask);
 dust(fsca==0 | isnan(fsca))=NaN;
