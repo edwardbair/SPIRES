@@ -8,8 +8,7 @@ function [smoothedCube,refl,solarZ,cloudmask,pxweights]=...
 %matdates - matdates for cube
 %hdfdir - where the MOD09GA HDF files live for a certain tile, e.g. h08v04
 %topofile- h5 file name from consolidateTopography, part of TopoHorizons
-%snowR - snow reflectane structure created using prepCloudSnowFilter
-
+%watermask- logical mask w/ ones for water
 %output:
 %smoothedCube: smoothed and gap filled (cloud free) cube of MOD09GA values
 %refl: terrain-corrected MOD09GA w/ NaNs for clouds and other missing data

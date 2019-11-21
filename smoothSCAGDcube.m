@@ -1,5 +1,6 @@
 function out=smoothSCAGDcube(outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh)
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,...
+    dust_fsca_thresh)
 
 for i=1:length(matdates)
     dv=datevec(matdates(i));
@@ -16,7 +17,7 @@ for i=1:length(matdates)
     fsca_t=single(m.fsca(:,:,ind))./100;
     weights_t=single(m.weights(:,:,ind))./100;
     grainradius_t=single(m.grainradius(:,:,ind));
-    dust_t=single(m.dust(:,:,ind)).*10^-11; %remove this later
+    dust_t=m.dust(:,:,ind);
 
     fsca(:,:,i)=fsca_t;
     weights(:,:,i)=weights_t;
@@ -48,18 +49,24 @@ fsca=smoothDataCube(fsca,newweights,'mask',~watermask);
 fsca(fsca<fsca_thresh)=0;
 fsca(wm)=NaN;
 
-% interpolate all grain radii where fsca is < 0.3
-
-lowfscamask=fsca<0.30;
+% create mask for low fsca (includes zeros)
+lowfscamask= fsca < 0.30;
+%set all low fsca values to NaN
 grainradius(lowfscamask)=NaN;
-%set weights for grain radius
+% set all weights for low fsca to 0
 newweights(lowfscamask)=0;
 
-grainradius=smoothDataCube(grainradius,newweights,'mask',~watermask);
+grainradius=smoothDataCube(grainradius,newweights,'mask',...
+    ~watermask);
 grainradius(fsca==0 | isnan(fsca))=NaN;
 
-dust(lowfscamask)=NaN;
-
+%interpolate the top 1% of dust values, b/c there is a spike there that 
+%is unrealistic
+%dustspike=quantile(dust(fsca >= dust_fsca_thresh),0.99);
+%dmask=fsca < dust_fsca_thresh | dust >= dustspike;
+dmask=fsca < dust_fsca_thresh;
+dust(dmask)=NaN;
+newweights(dmask)=0;
 dust=smoothDataCube(dust,newweights,'mask',~watermask);
 dust(fsca==0 | isnan(fsca))=NaN;
 
