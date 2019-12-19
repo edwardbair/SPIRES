@@ -63,7 +63,7 @@ for i=1:sz(4) %for each day
         end
     end
     %spatially interpolate dust
-    t=~isnan(dust(:,i)) & fsca(:,i)>0;
+    t=~isnan(dust(:,i));
     I=scatteredInterpolant(X(t),Y(t),dust(t,i));
     t=isnan(dust(:,i)) & fsca(:,i)>0;
     Idust=dust(:,i);

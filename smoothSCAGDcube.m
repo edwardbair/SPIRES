@@ -1,6 +1,5 @@
 function out=smoothSCAGDcube(outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,...
-    dust_fsca_thresh)
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh)
 
 for i=1:length(matdates)
     dv=datevec(matdates(i));
@@ -14,10 +13,11 @@ for i=1:length(matdates)
     end
     ind=datenum(dv)-datenum([dv(1:2) 1])+1;%1st day of month
     
+    %take careful note of scaling coefficients
     fsca_t=single(m.fsca(:,:,ind))./100;
     weights_t=single(m.weights(:,:,ind))./100;
     grainradius_t=single(m.grainradius(:,:,ind));
-    dust_t=m.dust(:,:,ind);
+    dust_t=m.dust(:,:,ind)./10;
 
     fsca(:,:,i)=fsca_t;
     weights(:,:,i)=weights_t;
@@ -60,13 +60,8 @@ grainradius=smoothDataCube(grainradius,newweights,'mask',...
     ~watermask);
 grainradius(fsca==0 | isnan(fsca))=NaN;
 
-%interpolate the top 1% of dust values, b/c there is a spike there that 
-%is unrealistic
-%dustspike=quantile(dust(fsca >= dust_fsca_thresh),0.99);
-%dmask=fsca < dust_fsca_thresh | dust >= dustspike;
-dmask=fsca < dust_fsca_thresh;
-dust(dmask)=NaN;
-newweights(dmask)=0;
+
+dust(lowfscamask)=NaN;
 dust=smoothDataCube(dust,newweights,'mask',~watermask);
 dust(fsca==0 | isnan(fsca))=NaN;
 

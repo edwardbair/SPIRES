@@ -1,6 +1,5 @@
 function out=smooth_and_run(tile,matdates,hdfdir,topofile,watermask,...
-    R0,F,pshade,fsca_thresh,outloc,grainradius_nPersist,el_cutoff,...
-    dust_fsca_thresh)
+    R0,F,pshade,fsca_thresh,outloc,grainradius_nPersist,el_cutoff)
 
 % smooths input (mod09ga) and runs scagd, then smooths again
 %input:
@@ -47,14 +46,13 @@ for i=1:length(m)
     mfile=matfile(fname,'Writable',true);
     mfile.fsca=uint8(out.fsca*100);
     mfile.grainradius=uint16(out.grainradius);
-    mfile.dust=single(out.dust);
+    mfile.dust=uint16(out.dust*10);
     mfile.weights=uint8(weights*100);
     mfile.matdates=rundates;
     fprintf('wrote %s \n',fname);
 end
 %refilter and smooth
 out=smoothSCAGDcube(outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,...
-    dust_fsca_thresh);
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh);
 
 toc(t1)
