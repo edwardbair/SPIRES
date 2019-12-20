@@ -1,4 +1,4 @@
-function out=run_scagd_modis(R0,R,solarZ,F,watermask,fsca_thresh,pshade)
+function out=run_scagd_modis(R0,R,solarZ,Fmat,Fkey,watermask,fsca_thresh,pshade)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -9,7 +9,7 @@ function out=run_scagd_modis(R0,R,solarZ,F,watermask,fsca_thresh,pshade)
 % dimensions: x,y,band,day
 % solarZ: solar zenith angles (MxNxd) for R
 % F: griddedInterpolant object that produces reflectances for each band
-% with inputs: grain radius, dust, cosZ
+% with inputs: grain radius, dust, solarZ
 % watermask: logical mask, true for water
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % pshade: shade spectra (bx1); reflectances
@@ -47,12 +47,12 @@ for i=1:sz(4) %for each day
         sZ=thissolarZ(j); %solarZ scalar (sometimes NaN on MOD09GA)
         wm=watermask(j); %watermask scalar
         if ~wm && ~isnan(sZ)
-            pxR=squeeze(thisR(j,:)); %reflectance vector
+            pxR=squeeze(thisR(j,:))'; %reflectance vector
             NDSI=(pxR(4)-pxR(6))/(pxR(4)+pxR(6));
             pxR0=squeeze(R0(j,:))'; %background reflectance vector
             if NDSI > 0
                 % run first pass inversion
-                o=speedyinvert(pxR,pxR0,sZ,F,pshade,[]); 
+                o=speedyinvert(pxR,pxR0,sZ,Fmat,Fkey,pshade,0,0); 
                 fsca(j,i)=o.x(1)/(1-o.x(2)); %normalize by fshade
                 grainradius(j,i)=o.x(3);
                 dust(j,i)=o.x(4);
@@ -75,11 +75,11 @@ for i=1:sz(4) %for each day
             pxR=squeeze(thisR(j,:)); %reflectance vector
             NDSI=(pxR(4)-pxR(6))/(pxR(4)+pxR(6));
             pxR0=squeeze(R0(j,:))'; %background reflectance vector
-            if NDSI > 0 && isnan(dust(j,i)) %e.g. fsca < 0.90
+            if NDSI > 0 && isnan(dust(j,i)) && ~isnan(Idust(j)) %e.g. fsca < 0.90
                 % run 2nd pass inversion: solve for fsca and fshade using
                 % solved grain size and interpolated dust
-                o=speedyinvert(pxR,pxR0,sZ,F,pshade,...
-                    struct('radius',grainradius(j,i),'dust',Idust(j)));  
+                o=speedyinvert_mex(pxR,pxR0,sZ,Fmat,Fkey,pshade,...
+                    grainradius(j,i),Idust(j));
                 fsca(j,i)=o.x(1)/(1-o.x(2)); %normalize by fshade
                 grainradius(j,i)=o.x(3); %same as interpolated input
                 dust(j,i)=o.x(4); %same as input
