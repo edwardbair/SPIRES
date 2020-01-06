@@ -11,6 +11,9 @@ addpath(fullfile(nbroot,'toolbox','SnowCloudReflectance','FunctionLib'));
 addpath(fullfile(nbroot,'toolbox','RasterReprojection'));
 addpath(fullfile(nbroot,'BoxSync','MATLAB functions','Inpaint_nans'));
 addpath(fullfile(nbroot,'BoxSync','MATLAB functions','smoothn'));
+addpath(fullfile(nbroot,'BoxSync','MATLAB functions','ndnanfilter'));
+addpath(fullfile(nbroot,'BoxSync','MATLAB functions','freezeColors'));
+
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','TimeSpace'));
 addpath(fullfile(nbroot,'BoxSync','TimeSpaceSnowSandbox'));
 

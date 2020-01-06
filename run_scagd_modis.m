@@ -36,8 +36,6 @@ veclen=sz(1)*sz(2);
 shade=zeros(size(fsca));
 
 [X,Y]=meshgrid(1:sz(2),1:sz(1));
-X=reshape(X,[sz(1)*sz(2) 1]);
-Y=reshape(Y,[sz(1)*sz(2) 1]);
 
 for i=1:sz(4) %for each day
     thisR=squeeze(R(:,:,i));
@@ -63,12 +61,22 @@ for i=1:sz(4) %for each day
         end
     end
     %spatially interpolate dust
-    t=~isnan(dust(:,i));
-    I=scatteredInterpolant(X(t),Y(t),dust(t,i),...
-        'linear','nearest');
-    t=isnan(dust(:,i)) & fsca(:,i) > 0;
-    Idust=dust(:,i);
-    Idust(t)=I(X(t),Y(t));
+    f=reshape(fsca(:,i),[sz(1) sz(2)]);%fsca and dust back to 2D
+    d=reshape(dust(:,i),[sz(1) sz(2)]);
+    Idust=d;
+    t=~isnan(d); %index of solved dust values
+    if nnz(t(:)) > 5 %if there are solved dust values, interpolate
+        I=scatteredInterpolant(X(t),Y(t),d(t),'linear','nearest');
+        %now find unsolved (NaN) dust values where fsca > 0
+        %fill using scatteredInt object 
+        Idust=I(X,Y);
+        %apply spatial filter
+        Idust=ndnanfilter(Idust,'gausswin',[50 50]);
+        %fix overflow
+        Idust(f==0 | isnan(f))=NaN;
+        %reshape for recomputing
+        Idust=reshape(Idust,[sz(1)*sz(2) 1]);%put back in column vec
+    end
     parfor j=1:veclen %for each pixel
         sZ=thissolarZ(j); %solarZ scalar (sometimes NaN on MOD09GA)
         wm=watermask(j); %watermask scalar
@@ -76,7 +84,7 @@ for i=1:sz(4) %for each day
             pxR=squeeze(thisR(j,:)); %reflectance vector
             NDSI=(pxR(4)-pxR(6))/(pxR(4)+pxR(6));
             pxR0=squeeze(R0(j,:)); %background reflectance vector
-            if NDSI > 0 && isnan(dust(j,i)) %e.g. fsca < 0.90
+            if NDSI > 0 && ~isnan(Idust(j)) && fsca(j,i) > 0 %e.g. fsca < 0.95
                 % run 2nd pass inversion: solve for fsca and fshade using
                 % solved grain size and interpolated dust
                 o=speedyinvert(pxR,pxR0,sZ,F,pshade,...

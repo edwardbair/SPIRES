@@ -44,10 +44,26 @@ for i=1:length(m)
     out=run_scagd_modis(R0,R,solarZ,F,watermask,fsca_thresh,pshade);
     fname=fullfile(outloc,[datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
-    mfile.fsca=uint8(out.fsca*100);
-    mfile.grainradius=uint16(out.grainradius);
-    mfile.dust=uint16(out.dust*10);
-    mfile.weights=uint8(weights*100);
+    %fsca
+    t=isnan(out.fsca);
+    out.fsca=uint8(out.fsca*100);
+    out.fsca(t)=intmax('uint8'); % 255 is NaN
+    mfile.fsca=out.fsca;
+    %grain radius
+    out.grainradius=uint16(out.grainradius);
+    t=t | out.fsca==0;
+    out.grainradius(t)=intmax('uint16'); %65535
+    mfile.grainradius=out.grainradius;
+    %dust
+    out.dust=uint16(out.dust*10);
+    out.dust(t)=intmax('uint16'); %65535
+    mfile.dust=out.dust;
+    %weights
+    t=isnan(weights);
+    out.weights=uint8(weights*100);
+    out.weights(t)=intmax('uint8'); %255
+    mfile.weights=out.weights;
+    
     mfile.matdates=rundates;
     fprintf('wrote %s \n',fname);
 end
