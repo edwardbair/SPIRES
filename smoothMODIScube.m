@@ -87,7 +87,8 @@ for i=1:size(refl,3) % for each band
     bandcube(cloudmask)=NaN; %set all the clouds to NaN
     weights=squeeze(bandweights(:,:,i,:));
     weights(isnan(bandcube))=0;
-    smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights,'mask',~watermask);
+    smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights,...
+        'mask',~watermask,'method','smoothingspline');
     t2=toc;
     fprintf('filled and smoothed band:%i in %g min\n',i,t2/60);
 end

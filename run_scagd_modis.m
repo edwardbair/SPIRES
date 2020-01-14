@@ -20,6 +20,7 @@ function out=run_scagd_modis(R0,R,solarZ,F,watermask,fsca_thresh,pshade)
 %   grainradius: MxNxd
 %   dust: MxNxd
 
+
 sz=size(R);
 
 fsca=zeros([sz(1)*sz(2) sz(4)]);
@@ -30,6 +31,7 @@ solarZ=reshape(solarZ,[sz(1)*sz(2) sz(4)]);
 R=reshape(R,[sz(1)*sz(2) sz(3) sz(4)]);
 R0=reshape(R0,[sz(1)*sz(2) sz(3)]);
 watermask=reshape(watermask,[sz(1)*sz(2) 1]);
+
 
 veclen=sz(1)*sz(2);
 
@@ -50,7 +52,7 @@ for i=1:sz(4) %for each day
             pxR0=squeeze(R0(j,:)); %background reflectance vector
             if NDSI > 0
                 % run first pass inversion
-                o=speedyinvert(pxR,pxR0,sZ,F,pshade,[]); 
+                o=speedyinvert(pxR,pxR0,sZ,F,pshade,[]);
                 fsca(j,i)=o.x(1)/(1-o.x(2)); %normalize by fshade
                 grainradius(j,i)=o.x(3);
                 dust(j,i)=o.x(4);
@@ -71,7 +73,7 @@ for i=1:sz(4) %for each day
         %fill using scatteredInt object 
         Idust=I(X,Y);
         %apply spatial filter
-        Idust=ndnanfilter(Idust,'gausswin',[50 50]);
+        Idust=ndnanfilter(Idust,'gausswin',[25 25]);
         %fix overflow
         Idust(f==0 | isnan(f))=NaN;
         %reshape for recomputing

@@ -1,6 +1,6 @@
 function out=smoothSCAGDcube(outloc,matdates,...
     grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh)
-
+%1.8 hr/yr for h08v05
 for i=1:length(matdates)
     dv=datevec(matdates(i));
     fname=fullfile(outloc,[datestr(dv,'yyyymm') '.mat']);
@@ -55,12 +55,15 @@ gmask=snowPersistenceFilter(grainradius > 50 & grainradius < 1190,...
     grainradius_nPersist,1);
 
 % set to NAN days that aren't in that mask but are not zero fsca
-fsca(~gmask & ~fsca==0)=NaN;
+fsca(~gmask & ~(fsca==0))=NaN;
 
 newweights=weights;
 newweights(isnan(fsca))=0;
 %fill in and smooth NaNs
-fsca=smoothDataCube(fsca,newweights,'mask',~watermask);
+%fsca=smoothDataCube(fsca,newweights,'mask',~watermask,...
+%    'method','smoothingspline');
+fsca=smoothDataCube(fsca,newweights,'mask',~watermask,...
+   'method','smoothingspline','SmoothingParam',0.02);
 %get some small fsca values from smoothing - set to zero
 fsca(fsca<fsca_thresh)=0;
 fsca(wm)=NaN;
@@ -71,14 +74,15 @@ anyfsca=any(fsca,3);
 %convert zeros(uint) to back to NaN
 %grainradius(grainradius==0)=NaN;
 % create mask for low fsca (includes zeros)
-lowfscamask= fsca > 0 & fsca < 0.30;
+%lowfscamask= fsca > 0 & fsca < 0.30;
 %set all low fsca values to NaN
-grainradius(lowfscamask)=NaN;
+%grainradius(lowfscamask)=NaN;
 % set all weights for NaNs to 0
 newweights=weights;
-newweights(isnan(grainradius))=0;
+newweights(isnan(fsca) | fsca==0)=0;
 
-grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca);
+grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca,...
+    'method','smoothingspline','SmoothingParam',0.02);
 grainradius(fsca==0 | isnan(fsca))=NaN;
 
 %convert zeros back to NaN
@@ -90,12 +94,10 @@ grainradius(fsca==0 | isnan(fsca))=NaN;
 %newweights(isnan(dust))=0; %if its NaN its zero
 %dust(isnan(dust))=0; % need zeros for spline smoothing 
 
-dust=smoothDataCube(dust,newweights,'mask',anyfsca);
-%double smoothing needed to get rid of bloc proc artifacts
-%dust=smoothDataCube(dust,newweights,...
- %   'mask',anyfsca,'method','smoothingspline');
-dust(fsca==0 | isnan(fsca))=NaN;
+dust=smoothDataCube(dust,newweights,'mask',anyfsca,...
+    'method','smoothingspline','SmoothingParam',0.02);
 
+dust(fsca==0 | isnan(fsca))=NaN;
 
 [~,hdr]=GetTopography(topofile,'elevation');
 
