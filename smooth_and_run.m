@@ -1,5 +1,5 @@
 function out=smooth_and_run(tile,matdates,hdfdir,topofile,watermask,...
-    R0,F,pshade,fsca_thresh,outloc,grainradius_nPersist,el_cutoff)
+    R0,Ffile,pshade,fsca_thresh,outloc,grainradius_nPersist,el_cutoff)
 
 % smooths input (mod09ga) and runs scagd, then smooths again
 %input:
@@ -12,7 +12,8 @@ function out=smooth_and_run(tile,matdates,hdfdir,topofile,watermask,...
 % cube from a month with minimum fsca and clouds, like August or September,
 % then taking minimum of reflectance for each band (b)
 
-% F: griddedInterpolant object that produces reflectances for each band
+% Ffile, location of griddedInterpolant object that produces 
+%reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table
 % pshade: (photometric) shade spectra (bx1); reflectances
 % corresponding to bands
@@ -41,7 +42,7 @@ for i=1:length(m)
     rundates=matdates(idx);
     [R,~,solarZ,~,weights]=...
     smoothMODIScube(tile,rundates,hdfdir,topofile,watermask);
-    out=run_scagd_modis(R0,R,solarZ,F,watermask,fsca_thresh,pshade);
+    out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade);
     fname=fullfile(outloc,[datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
     %fsca

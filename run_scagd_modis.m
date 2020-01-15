@@ -1,4 +1,4 @@
-function out=run_scagd_modis(R0,R,solarZ,F,watermask,fsca_thresh,pshade)
+function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -8,7 +8,8 @@ function out=run_scagd_modis(R0,R,solarZ,F,watermask,fsca_thresh,pshade)
 % R - 4D cube of time-space smoothed reflectances (MxNxbxd) with
 % dimensions: x,y,band,day
 % solarZ: solar zenith angles (MxNxd) for R
-% F: griddedInterpolant object that produces reflectances for each band
+% Ffile, location of griddedInterpolant object that produces reflectances 
+%for each band
 % with inputs: grain radius, dust, cosZ
 % watermask: logical mask, true for water
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
@@ -52,7 +53,7 @@ for i=1:sz(4) %for each day
             pxR0=squeeze(R0(j,:)); %background reflectance vector
             if NDSI > 0
                 % run first pass inversion
-                o=speedyinvert(pxR,pxR0,sZ,F,pshade,[]);
+                o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,[]);
                 fsca(j,i)=o.x(1)/(1-o.x(2)); %normalize by fshade
                 grainradius(j,i)=o.x(3);
                 dust(j,i)=o.x(4);
@@ -89,7 +90,7 @@ for i=1:sz(4) %for each day
             if NDSI > 0 && ~isnan(Idust(j)) && fsca(j,i) > 0 %e.g. fsca < 0.95
                 % run 2nd pass inversion: solve for fsca and fshade using
                 % solved grain size and interpolated dust
-                o=speedyinvert(pxR,pxR0,sZ,F,pshade,...
+                o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,...
                     struct('radius',grainradius(j,i),'dust',Idust(j)));  
                 fsca(j,i)=o.x(1)/(1-o.x(2)); %normalize by fshade
                 grainradius(j,i)=o.x(3); %same as interpolated input
