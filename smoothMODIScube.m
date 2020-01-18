@@ -85,10 +85,27 @@ for i=1:size(refl,3) % for each band
     tic;
     bandcube=squeeze(refl(:,:,i,:));
     bandcube(cloudmask)=NaN; %set all the clouds to NaN
-    weights=squeeze(bandweights(:,:,i,:));
-    weights(isnan(bandcube))=0;
-    smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights,...
-        'mask',~watermask,'method','smoothingspline');
+    %weights=squeeze(bandweights(:,:,i,:));
+    %weights(isnan(bandcube))=0;
+    %fill datacube
+    vec=reshape(bandcube,[sz(1)*sz(2) sz(4)])'; %col major (days x pixels)
+    parfor j=1:size(vec,2)
+        v=vec(:,j)
+        t=isnan(v);
+        if nnz(~t) > 3
+            %interpolate
+            v(t)=interp1(matdates(~t),v(~t),matdates(t));
+            %extrapolate
+            t=isnan(v);
+            if any(t)
+                v(t)=interp1(matdates(~t),v(~t),matdates(t),'nearest','extrap');
+            end
+            vec(:,j)=v;
+        end
+    end
+    smoothedCube(:,:,i,:)=reshape(vec',[sz(1) sz(2) sz(4)]);
+%     smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights,...
+%         'mask',~watermask,'method','smoothingspline');
     t2=toc;
     fprintf('filled and smoothed band:%i in %g min\n',i,t2/60);
 end

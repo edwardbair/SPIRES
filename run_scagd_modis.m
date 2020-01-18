@@ -1,4 +1,5 @@
-function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade)
+function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
+    pshade,dust_thresh,tolval)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -8,19 +9,21 @@ function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade)
 % R - 4D cube of time-space smoothed reflectances (MxNxbxd) with
 % dimensions: x,y,band,day
 % solarZ: solar zenith angles (MxNxd) for R
-% Ffile, location of griddedInterpolant object that produces reflectances 
+% Ffile, location of griddedInterpolant object that produces reflectances
 %for each band
 % with inputs: grain radius, dust, cosZ
 % watermask: logical mask, true for water
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % pshade: shade spectra (bx1); reflectances
+% dust_tresh: threshold cutoff to return dust values, e.g. 0.85
+% tolval: unique row tolerance value, i.e. 0.05 - bigger number goes faster
+% as more pixels are grouped together
 
 %output:
 %   out : struct w fields
 %   fsca: MxNxd
 %   grainradius: MxNxd
 %   dust: MxNxd
-
 
 sz=size(R);
 
@@ -33,72 +36,65 @@ R=reshape(R,[sz(1)*sz(2) sz(3) sz(4)]);
 R0=reshape(R0,[sz(1)*sz(2) sz(3)]);
 watermask=reshape(watermask,[sz(1)*sz(2) 1]);
 
-
-veclen=sz(1)*sz(2);
+%veclen=sz(1)*sz(2);
 
 shade=zeros(size(fsca));
 
-[X,Y]=meshgrid(1:sz(2),1:sz(1));
+red_b=3;
+swir_b=6;
 
 for i=1:sz(4) %for each day
     thisR=squeeze(R(:,:,i));
     thissolarZ=squeeze(solarZ(:,i));
+    
+    NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
+        (thisR(:,red_b)+thisR(:,swir_b));
+    t=NDSI > 0  & ~watermask & ~isnan(thissolarZ);
+    M=[round(thisR,2) round(R0,2) round(thissolarZ)];
+    M=M(t,:); % only values w/ > 0 NDSI and no water
+    [c,im,~]=uniquetol(M,tolval,'ByRows',true,...
+        'DataScale',1,'OutputAllIndices',true);
     tic;
-    parfor j=1:veclen %for each pixel
-        sZ=thissolarZ(j); %solarZ scalar (sometimes NaN on MOD09GA)
-        wm=watermask(j); %watermask scalar
-        if ~wm && ~isnan(sZ)
-            pxR=squeeze(thisR(j,:)); %reflectance vector
-            NDSI=(pxR(4)-pxR(6))/(pxR(4)+pxR(6));
-            pxR0=squeeze(R0(j,:)); %background reflectance vector
-            if NDSI > 0
-                % run first pass inversion
-                o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,[]);
-                fsca(j,i)=o.x(1)/(1-o.x(2)); %normalize by fshade
-                grainradius(j,i)=o.x(3);
-                dust(j,i)=o.x(4);
-                shade(j,i)=o.x(2);        
-            end
-        else
-            fsca(j,i)=NaN;
+    temp=zeros(length(c),4); %fsca,shade,grain radius,dust
+    parfor j=1:length(c) %solve for unique (w/ tol) rows
+        pxR=c(j,1:7);
+        pxR0=c(j,8:14);
+        sZ=c(j,15);
+        o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,[]);
+        sol=o.x; %fsca,shade,grain radius,dust
+        sol(1)=sol(1)/(1-sol(2));%normalize by fshade
+        temp(j,:)=sol;
+    end
+    %make a copy of temp for use below
+    temp2=temp;
+    median_dustval=median(temp(:,4),'omitnan');
+    %re-solve for places w/ NaN dust using median dust value
+    parfor j=1:length(c)
+        if isnan(temp(j,4)) % if there's a dust value, re-solve
+            pxR=c(j,1:7);
+            pxR0=c(j,8:14);
+            sZ=c(j,15);
+            o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,median_dustval);
+            sol=o.x; %fsca,shade,grain radius,dust
+            sol(1)=sol(1)/(1-sol(2));%normalize by fshade
+            temp2(j,:)=sol;
         end
     end
-    %spatially interpolate dust
-    f=reshape(fsca(:,i),[sz(1) sz(2)]);%fsca and dust back to 2D
-    d=reshape(dust(:,i),[sz(1) sz(2)]);
-    Idust=d;
-    t=~isnan(d); %index of solved dust values
-    if nnz(t(:)) > 5 %if there are solved dust values, interpolate
-        I=scatteredInterpolant(X(t),Y(t),d(t),'linear','nearest');
-        %now find unsolved (NaN) dust values where fsca > 0
-        %fill using scatteredInt object 
-        Idust=I(X,Y);
-        %apply spatial filter
-        Idust=ndnanfilter(Idust,'gausswin',[25 25]);
-        %fix overflow
-        Idust(f==0 | isnan(f))=NaN;
-        %reshape for recomputing
-        Idust=reshape(Idust,[sz(1)*sz(2) 1]);%put back in column vec
+    %create a list of indices
+    %and fill matrices corresponding to NDSI > 0 & ~water
+    %can't use parfor for this
+    repxx=zeros(length(M),4);
+    for j=1:length(temp2) % the unique indices
+        idx=im{j}; %indices for each unique val
+        repxx(idx,1)=temp2(j,1); %fsca
+        %don't forget shade is elem 2
+        repxx(idx,2)=temp2(j,3); %grain radius
+        repxx(idx,4)=temp2(j,4); %grain radius
     end
-    parfor j=1:veclen %for each pixel
-        sZ=thissolarZ(j); %solarZ scalar (sometimes NaN on MOD09GA)
-        wm=watermask(j); %watermask scalar
-        if ~wm && ~isnan(sZ)
-            pxR=squeeze(thisR(j,:)); %reflectance vector
-            NDSI=(pxR(4)-pxR(6))/(pxR(4)+pxR(6));
-            pxR0=squeeze(R0(j,:)); %background reflectance vector
-            if NDSI > 0 && ~isnan(Idust(j)) && fsca(j,i) > 0 %e.g. fsca < 0.95
-                % run 2nd pass inversion: solve for fsca and fshade using
-                % solved grain size and interpolated dust
-                o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,...
-                    struct('radius',grainradius(j,i),'dust',Idust(j)));  
-                fsca(j,i)=o.x(1)/(1-o.x(2)); %normalize by fshade
-                grainradius(j,i)=o.x(3); %same as interpolated input
-                dust(j,i)=o.x(4); %same as input
-                shade(j,i)=o.x(2);        
-            end
-        end
-    end
+    %now fill out all pixels
+    fsca(t,i)=repxx(:,1);
+    grainradius(t,i)=repxx(:,2);
+    dust(t,i)=repxx(:,4);
     t2=toc;
     fprintf('done w/ day %i in %g min\n',i,t2/60);
 end

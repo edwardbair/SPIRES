@@ -1,4 +1,4 @@
-function out = speedyinvert(R,R0,solarZ,Ffile,pshade,solveS)
+function out = speedyinvert(R,R0,solarZ,Ffile,pshade,dust_thresh,dust)
 %stripped down inversion for speed
 % input: 
 %   R - Nx1 band reflectance as vector, center of bandpass
@@ -8,6 +8,8 @@ function out = speedyinvert(R,R0,solarZ,Ffile,pshade,solveS)
 % dust (ppm), solarZ (deg), 
 %   and band for a specific sensor, e.g. LandSat 8 OLI or MODIS
 %   pshade:  shade spectra (bx1)
+%   dust_thresh - threshhold value for dust retrievals, e.g. 0.85
+% dust -dust val (ppmw), [] if needs to be solved for
 % output:
 %   out: fsca, fshade, grain radius (um), and dust conc (ppm)
 persistent F
@@ -30,13 +32,13 @@ if ~iscolumn(pshade)
 end
 
 %solve for fsca/shade again
-knowns=false;
-
-if ~isempty(solveS)
-    knowns=true;
-    radius=solveS.radius;
-    dust=solveS.dust;
-end
+% knowns=false;
+% 
+% if ~isempty(dust)
+%     knowns=true;
+%     radius=solveS.radius;
+%     dust=solveS.dust;
+% end
 
 out.x=NaN(4,1);
 
@@ -44,11 +46,10 @@ A=[1 1 0 0];
 b=1;
    
 try
-    if knowns
-        x0=[0.5 0.1 radius dust]; %fsca, fshade,grain size (um), dust (ppm)
-        lb=[0 0 radius dust];
-        ub=[1 0.8 radius dust];
-%         X=lsqnonlin(@SnowCloudDiff,x0,lb,ub,options);
+    if ~isempty(dust)
+        x0=[0.5 0.1 250 dust]; %fsca, fshade,grain size (um), dust (ppm)
+        lb=[0 0 30 dust];
+        ub=[1 1 1200 dust];
         X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options); 
     else
     %try a clean snow solution
@@ -59,7 +60,7 @@ try
         X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
         X(4)=NaN; %dust is NaN unless...
         %if fsca is above threshold, re-solve for shade & dust 
-        if X(1) >= 0.85
+        if X(1) >= dust_thresh
             x0=[X(1) 0.1 X(3) 0.1]; %fsca,fshade,grain size (um), dust (ppm)
             lb=[X(1) 0 X(3) 0];
             ub=[X(1) 1 X(3) 1000];

@@ -1,5 +1,6 @@
 function out=smooth_and_run(tile,matdates,hdfdir,topofile,watermask,...
-    R0,Ffile,pshade,fsca_thresh,outloc,grainradius_nPersist,el_cutoff)
+    R0,Ffile,pshade,dust_thresh,tolval,fsca_thresh,outloc,...
+    grainradius_nPersist,el_cutoff)
 
 % smooths input (mod09ga) and runs scagd, then smooths again
 %input:
@@ -17,7 +18,9 @@ function out=smooth_and_run(tile,matdates,hdfdir,topofile,watermask,...
 % with inputs: grain radius, dust, cosZ, i.e. the look up table
 % pshade: (photometric) shade spectra (bx1); reflectances
 % corresponding to bands
-
+% dust thresh: min value for dust retrievals, scalar e.g. 0.85
+% tol val: threshold for uniquetol spectra, higher runs faster, 0 runs all pixesl
+% scalar e.g. 0.05
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % outloc: path to write output
 % grainradius_nPersist: min # of consecutive days needed with normal 
@@ -42,7 +45,8 @@ for i=1:length(m)
     rundates=matdates(idx);
     [R,~,solarZ,~,weights]=...
     smoothMODIScube(tile,rundates,hdfdir,topofile,watermask);
-    out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade);
+    out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
+        dust_thresh,tolval);
     fname=fullfile(outloc,[datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
     %fsca
