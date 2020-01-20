@@ -76,4 +76,5 @@ end
 out=smoothSCAGDcube(outloc,matdates,...
     grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh);
 
-toc(t1)
+t2=toc(t1);
+fprintf('completed in %5.2f hr\n',t2/60/60);

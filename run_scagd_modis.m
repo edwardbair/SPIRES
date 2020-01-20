@@ -27,21 +27,25 @@ function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
 
 sz=size(R);
 
+[X,Y]=meshgrid(1:sz(1),1:sz(2));
+
 fsca=zeros([sz(1)*sz(2) sz(4)]);
 grainradius=NaN([sz(1)*sz(2) sz(4)]);
 dust=NaN([sz(1)*sz(2) sz(4)]);
+
 
 solarZ=reshape(solarZ,[sz(1)*sz(2) sz(4)]);
 R=reshape(R,[sz(1)*sz(2) sz(3) sz(4)]);
 R0=reshape(R0,[sz(1)*sz(2) sz(3)]);
 watermask=reshape(watermask,[sz(1)*sz(2) 1]);
-
-%veclen=sz(1)*sz(2);
-
 shade=zeros(size(fsca));
+X=reshape(X,[sz(1)*sz(2) 1]);
+Y=reshape(Y,[sz(1)*sz(2) 1]);
 
 red_b=3;
 swir_b=6;
+
+
 
 for i=1:sz(4) %for each day
     thisR=squeeze(R(:,:,i));
@@ -52,6 +56,8 @@ for i=1:sz(4) %for each day
     t=NDSI > 0  & ~watermask & ~isnan(thissolarZ);
     M=[round(thisR,2) round(R0,2) round(thissolarZ)];
     M=M(t,:); % only values w/ > 0 NDSI and no water
+    XM=X(t); % X coordinates for M
+    YM=Y(t); % Y coordinates for M
     [c,im,~]=uniquetol(M,tolval,'ByRows',true,...
         'DataScale',1,'OutputAllIndices',true);
     tic;
@@ -67,17 +73,26 @@ for i=1:sz(4) %for each day
     end
     %make a copy of temp for use below
     temp2=temp;
-    median_dustval=median(temp(:,4),'omitnan');
+    %median_dustval=median(temp(:,4),'omitnan');
     %re-solve for places w/ NaN dust using median dust value
-    parfor j=1:length(c)
-        if isnan(temp(j,4)) % if there's a dust value, re-solve
-            pxR=c(j,1:7);
-            pxR0=c(j,8:14);
-            sZ=c(j,15);
-            o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,median_dustval);
-            sol=o.x; %fsca,shade,grain radius,dust
-            sol(1)=sol(1)/(1-sol(2));%normalize by fshade
-            temp2(j,:)=sol;
+    tt=~isnan(temp(:,4));
+    if nnz(tt) >= 4 % if there are at least 4 solved dust values
+        sdust=temp(tt,4); %solved dust values
+        parfor j=1:length(c) 
+            if isnan(temp(j,4)) % if there's no dust value, re-solve using
+                %interpolated dust 
+                pxR=c(j,1:7);
+                pxR0=c(j,8:14);
+                sZ=c(j,15);
+                idx=im{j}(1); %index to row of M correspnding to c
+                [~,idx_s]=pdist2([XM(tt),YM(tt)],[XM(idx),YM(idx)],...
+                    'euclidean','Smallest',4);
+                D=mean(sdust(idx_s)); % mean of closest 4 dust values
+                o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,D);
+                sol=o.x; %fsca,shade,grain radius,dust
+                sol(1)=sol(1)/(1-sol(2));%normalize by fshade
+                temp2(j,:)=sol;
+            end
         end
     end
     %create a list of indices
