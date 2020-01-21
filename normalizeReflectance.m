@@ -13,6 +13,15 @@ function Rc=normalizeReflectance(R,topofile,solarZ,solarAzimuth)
 aspect = 180 - GetTopography(topofile,'aspect'); 
 slope = GetTopography(topofile,'slope');
 %Tan et al eqs 1&2
-c=cosd(solarZ)./(cosd(solarZ).*cosd(slope)+sind(solarZ).*...
+ic=(cosd(solarZ).*cosd(slope)+sind(solarZ).*...
             sind(slope).*cosd(solarAzimuth-aspect));
+
+c=cosd(solarZ)./ic;
 Rc=R.*c;
+%limit corrections
+
+
+%fix negative values
+Rc(Rc<0.001)=0.001;
+%fix values > 1
+Rc(Rc>=1)=0.999;

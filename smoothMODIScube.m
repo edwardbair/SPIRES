@@ -61,10 +61,6 @@ parfor i=1:length(matdates)
 
         %correct reflectance
         Rc=normalizeReflectance(R,topofile,solarZ(:,:,i),solarAzimuth);
-        %fix negative values
-        Rc(Rc<0.001)=0.001;
-        %fix values > 1
-        Rc(Rc>=1)=0.999;
         %create cloud & snow masks
         
         S=GetMOD09GA(f,'state');
@@ -80,6 +76,7 @@ parfor i=1:length(matdates)
 end
 
 smoothedCube=NaN(size(refl));
+wm=reshape(watermask,[sz(1)*sz(2) 1]);
 
 for i=1:size(refl,3) % for each band
     tic;
@@ -90,20 +87,30 @@ for i=1:size(refl,3) % for each band
     %fill datacube
     vec=reshape(bandcube,[sz(1)*sz(2) sz(4)])'; %col major (days x pixels)
     parfor j=1:size(vec,2)
-        v=vec(:,j)
-        t=isnan(v);
-        if nnz(~t) > 3
-            %interpolate
-            v(t)=interp1(matdates(~t),v(~t),matdates(t));
-            %extrapolate
+        if ~wm(j)
+            v=vec(:,j)
             t=isnan(v);
-            if any(t)
-                v(t)=interp1(matdates(~t),v(~t),matdates(t),'nearest','extrap');
+            if nnz(~t) > 3
+                %interpolate
+                v(t)=interp1(matdates(~t),v(~t),matdates(t));
+                %extrapolate
+                tt=isnan(v);
+                if any(tt)
+                    v(tt)=interp1(matdates(~tt),v(~tt),matdates(tt),...
+                        'nearest','extrap');
+                end
+                vec(:,j)=v;
             end
-            vec(:,j)=v;
         end
     end
-    smoothedCube(:,:,i,:)=reshape(vec',[sz(1) sz(2) sz(4)]);
+    XX=reshape(vec',[sz(1) sz(2) sz(4)]);
+    parfor j=1:size(XX,3)
+        if any(isnan(XX(:,:,j)) & ~watermask,'all') %fill any remaining NaNs 
+            %that could  not be temporally interpolated spatially
+            XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
+        end
+    end
+    smoothedCube(:,:,i,:)=XX;
 %     smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights,...
 %         'mask',~watermask,'method','smoothingspline');
     t2=toc;

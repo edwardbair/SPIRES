@@ -1,4 +1,4 @@
-function F=build_lt(sensor,bands,F,pshade)
+function F=build_lt(sensor,bands)
 %input: sensor, string, e.g. 'LandsatOLI' or 'MODIS'
 %bands: 1xN vector indicating bands needed, e.g. 1:7
 % output: gridded interpolant with inputs: 
@@ -8,22 +8,31 @@ function F=build_lt(sensor,bands,F,pshade)
 sT=SensorTable(sensor);
 
 radius=30:10:1200;
-dust=[0 0.1 1:10:1000];
+dust=[0 0.1 1:1:1000];
+% soot=0:1:500;
 solarZ=0:1:90;
 
 lTbl=zeros(length(radius),length(dust),...
     length(solarZ),length(bands));
 N=length(radius)*length(dust);
+% lTbl=zeros(length(radius),length(soot),...
+%     length(solarZ),length(bands));
+% N=length(radius)*length(soot);
+
 
 n=0;
 tic;
 for i=1:length(radius)
         for j=1:length(dust)
+%           for j=1:length(soot)
             parfor k=1:length(solarZ)
-                    out=SnowCloudSpectralRefl('snow','cosZ',cosd(solarZ(k)),...
-                       'radius',radius(i),...
-                        'dust',dust(j)*1e-6,'wavelength',...
+                    out=SnowCloudSpectralRefl('snow',...
+                        'cosZ',cosd(solarZ(k)),...
+                        'radius',radius(i),...
+                        'dust',dust(j)*1e-6,...
+                        'wavelength',...
                          sT.CentralWavelength(bands),'waveu','um');
+                                       
                     lTbl(i,j,k,:)=out.refl;
             end
             n=n+1;
@@ -33,7 +42,8 @@ for i=1:length(radius)
         end
 end
 [w,x,y,z]=ndgrid(radius,dust,solarZ,1:length(bands));
-F=griddedInterpolant(w,x,y,z,lTbl,'pchip','nearest');
+% [w,x,y,z]=ndgrid(radius,soot,solarZ,1:length(bands));
+F=griddedInterpolant(w,x,y,z,lTbl,'linear','nearest');
 
 %sname='/raid/sandbox/snowhydro/nbair/SMARTS/SMARTS_295_Linux/smarts295.ext.txt';
 % S=getSMARTSspectrum(sname);

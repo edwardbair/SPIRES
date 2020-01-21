@@ -14,6 +14,7 @@ addpath(fullfile(nbroot,'BoxSync','MATLAB functions','smoothn'));
 addpath(fullfile(nbroot,'BoxSync','MATLAB functions','ndnanfilter'));
 addpath(fullfile(nbroot,'BoxSync','MATLAB functions','freezeColors'));
 addpath(fullfile(nbroot,'BoxSync','MATLAB functions','tight_subplot'));
+addpath(fullfile(nbroot,'albedoLookup'));
 
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','TimeSpace'));
 addpath(fullfile(nbroot,'BoxSync','TimeSpaceSnowSandbox'));
