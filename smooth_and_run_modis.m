@@ -1,4 +1,4 @@
-function out=smooth_and_run(tile,matdates,hdfdir,topofile,watermask,...
+function out=smooth_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
     R0,Ffile,pshade,dust_thresh,tolval,fsca_thresh,outloc,...
     grainradius_nPersist,el_cutoff)
 
@@ -15,7 +15,7 @@ function out=smooth_and_run(tile,matdates,hdfdir,topofile,watermask,...
 
 % Ffile, location of griddedInterpolant object that produces 
 %reflectances for each band
-% with inputs: grain radius, dust, cosZ, i.e. the look up table
+% with inputs: grain radius, dust, cosZ, i.e. the look up table, band
 % pshade: (photometric) shade spectra (bx1); reflectances
 % corresponding to bands
 % dust thresh: min value for dust retrievals, scalar e.g. 0.85
@@ -45,7 +45,7 @@ for i=1:length(m)
     rundates=matdates(idx);
     [R,~,solarZ,~,weights]=...
     smoothMODIScube(tile,rundates,hdfdir,topofile,watermask);
-    out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
+    out=run_scagd(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
         dust_thresh,tolval);
     fname=fullfile(outloc,[datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);

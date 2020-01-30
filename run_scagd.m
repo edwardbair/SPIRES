@@ -11,7 +11,7 @@ function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
 % solarZ: solar zenith angles (MxNxd) for R
 % Ffile, location of griddedInterpolant object that produces reflectances
 %for each band
-% with inputs: grain radius, dust, cosZ
+% with inputs: grain radius, dust, solar zenith angle, band
 % watermask: logical mask, true for water
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % pshade: shade spectra (bx1); reflectances
@@ -76,7 +76,7 @@ for i=1:sz(4) %for each day
     %make a copy of temp for use below
     temp2=temp;
     %median_dustval=median(temp(:,4),'omitnan');
-    %re-solve for places w/ NaN dust using median dust value
+    %re-solve for places w/ NaN dust 
     tt=~isnan(temp(:,4));
     if nnz(tt) >= 4 % if there are at least 4 solved dust values
         sdust=temp(tt,4); %solved dust values

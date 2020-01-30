@@ -91,7 +91,7 @@ cc(isnan(cc))=0;
 t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
-o=run_scagd_modis(t0,t,acosd(mu),Ffile,~smask | nanmask,...
+o=run_scagd(t0,t,acosd(mu),Ffile,~smask | nanmask,...
     fsca_thresh,pshade,dust_thresh,tolval);
 
 % spatial interpolation
@@ -119,7 +119,7 @@ idust=inpaint_nans(idust,4);
 idust(ifsca==0)=NaN;
 idust(nanmask)=NaN;
 
-out.fsca=ifscag;
+out.fsca=ifsca;
 out.grainradius=igrainradius;
 out.dust=idust;
 
