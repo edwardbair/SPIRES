@@ -8,7 +8,7 @@ function F=build_lt(sensor,bands)
 sT=SensorTable(sensor);
 
 radius=30:10:1200;
-dust=[0 0.1 1:1:1000];
+dust=[0 0.1 1:10:1000];
 % soot=0:1:500;
 solarZ=0:1:90;
 

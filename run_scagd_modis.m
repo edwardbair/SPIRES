@@ -27,16 +27,20 @@ function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
 
 sz=size(R);
 
+if length(sz) == 3
+   sz(4)=1; % singleton 4th dimenson
+end
+
 [X,Y]=meshgrid(1:sz(1),1:sz(2));
+
 
 fsca=zeros([sz(1)*sz(2) sz(4)]);
 grainradius=NaN([sz(1)*sz(2) sz(4)]);
 dust=NaN([sz(1)*sz(2) sz(4)]);
 
-
-solarZ=reshape(solarZ,[sz(1)*sz(2) sz(4)]);
-R=reshape(R,[sz(1)*sz(2) sz(3) sz(4)]);
-R0=reshape(R0,[sz(1)*sz(2) sz(3)]);
+solarZ=reshape(double(solarZ),[sz(1)*sz(2) sz(4)]);
+R=reshape(double(R),[sz(1)*sz(2) sz(3) sz(4)]);
+R0=reshape(double(R0),[sz(1)*sz(2) sz(3)]);
 watermask=reshape(watermask,[sz(1)*sz(2) 1]);
 shade=zeros(size(fsca));
 X=reshape(X,[sz(1)*sz(2) 1]);
@@ -44,8 +48,6 @@ Y=reshape(Y,[sz(1)*sz(2) 1]);
 
 red_b=3;
 swir_b=6;
-
-
 
 for i=1:sz(4) %for each day
     thisR=squeeze(R(:,:,i));
@@ -103,12 +105,14 @@ for i=1:sz(4) %for each day
         idx=im{j}; %indices for each unique val
         repxx(idx,1)=temp2(j,1); %fsca
         %don't forget shade is elem 2
-        repxx(idx,2)=temp2(j,3); %grain radius
-        repxx(idx,4)=temp2(j,4); %grain radius
+        repxx(idx,2)=temp2(j,2); %shade
+        repxx(idx,3)=temp2(j,3); %grain radius
+        repxx(idx,4)=temp2(j,4); %dust
     end
     %now fill out all pixels
     fsca(t,i)=repxx(:,1);
-    grainradius(t,i)=repxx(:,2);
+    shade(t,i)=repxx(:,2);
+    grainradius(t,i)=repxx(:,3);
     dust(t,i)=repxx(:,4);
     t2=toc;
     fprintf('done w/ day %i in %g min\n',i,t2/60);

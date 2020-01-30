@@ -60,7 +60,9 @@ parfor i=1:length(matdates)
         solarAzimuth=imresize(x,[sz(1) sz(2)]);
 
         %correct reflectance
-        Rc=normalizeReflectance(R,topofile,solarZ(:,:,i),solarAzimuth);
+        Slope=GetTopography(topofile,'slope');
+        Aspect=GetTopography(topofile,'aspect');
+        Rc=normalizeReflectance(R,Slope,Aspect,solarZ(:,:,i),solarAzimuth);
         %create cloud & snow masks
         
         S=GetMOD09GA(f,'state');
