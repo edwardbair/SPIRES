@@ -15,4 +15,4 @@ See the comments and ftp://ftp.snow.ucsb.edu/pub/org/snow/users/nbair/SCAGDexamp
 
 Papers on methods and validation are forthcoming
 
-NB, JD 2020-1-31
+NB 2020-1-31
