@@ -26,7 +26,7 @@ addpath(fullfile(jdroot,'Data','Optical'));
 
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','General'));
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','SunPosition'));
-addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','TimeSpace'));
+%addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','TimeSpace'));
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','Mapping'));
 addpath(fullfile(nbroot,'BoxSync','JeffFunctionLibSandbox','MODIS_HDF'));
 
