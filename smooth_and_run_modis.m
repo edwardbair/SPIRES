@@ -1,6 +1,6 @@
 function out=smooth_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
     R0,Ffile,pshade,dust_thresh,tolval,fsca_thresh,outloc,...
-    grainradius_nPersist,el_cutoff)
+    grainradius_nPersist,el_cutoff,cc)
 
 % smooths input (mod09ga) and runs scagd, then smooths again
 %input:
@@ -24,10 +24,10 @@ function out=smooth_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % outloc: path to write output
 % grainradius_nPersist: min # of consecutive days needed with normal 
-%grain sizes to be kept as snow, e.g. 7
-%el_cutoff, min elevation for snow, m - scalar, e.g. 1500
-% dust_fsca_thresh - don't trust dust values with fsca below this, scalar,
-% e.g. 0.85
+% grain sizes to be kept as snow, e.g. 7
+% el_cutoff, min elevation for snow, m - scalar, e.g. 1500
+% cc - static canopy cover, single or doube, same size as watermask,
+% 0-1 for viewable gap fraction correction
 
 %output:
 %   out:
@@ -74,7 +74,7 @@ for i=1:length(m)
 end
 %refilter and smooth
 out=smoothSCAGDcube(outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh);
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc);
 
 t2=toc(t1);
 fprintf('completed in %5.2f hr\n',t2/60/60);

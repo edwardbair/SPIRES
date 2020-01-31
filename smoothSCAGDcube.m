@@ -1,5 +1,19 @@
 function out=smoothSCAGDcube(outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh)
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc)
+%function to smooth cube after running through SCAGD
+% outloc - output location, string
+% matdates - datenum vector for image days
+% grainradius_nPersist: min # of consecutive days needed with normal 
+% grain sizes to be kept as snow, e.g. 7
+% watermask- logical mask w/ ones for water 
+% topofile- h5 file name from consolidateTopography, part of TopoHorizons
+% el_cutoff, min elevation for snow, m - scalar, e.g. 1500
+% fsca_thresh: min fsca cutoff, scalar e.g. 0.15
+% cc - static canopy cover, single or doube, same size as watermask,
+% 0-1 for viewable gap fraction correction
+%output: struct out w/ fields
+%fsca, grainradius, dust, and hdr (geographic info)
+
 %1.8 hr/yr for h08v05
 for i=1:length(matdates)
     dv=datevec(matdates(i));
@@ -67,6 +81,10 @@ fsca=smoothDataCube(fsca,newweights,'mask',~watermask,...
 %get some small fsca values from smoothing - set to zero
 fsca(fsca<fsca_thresh)=0;
 fsca(wm)=NaN;
+%viewable gap correction
+cc(isnan(cc))=0;
+fsca=fsca./(1-cc);
+fsca(fsca>1)=1;
 
 %create mask of any fsca for interpolation
 anyfsca=any(fsca,3);
