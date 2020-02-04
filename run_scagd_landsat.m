@@ -1,6 +1,6 @@
 function out=run_scagd_landsat(r0dir,rdir,topofile,...
     Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,...
-    plotbool,subset)
+    subset)
 %run scagd over for a landsat scene
 % r0date - date for background scene in yyyymmdd, e.g. 20180923
 % r0dir - R0 directory, must contain geotiff surface reflectances from USGS
@@ -19,10 +19,11 @@ function out=run_scagd_landsat(r0dir,rdir,topofile,...
 % CCfile - location of .mat
 % canopy cover - canopy cover for pixels 0-1, size of scene
 % also need RefMatrix and ProjectionStructure
-% plootbool - logical - plot results?
 % subset - either empty for none or [row1 row2;col1 col2], where are
 % row1/col1 are the starting pixels and row2/col2 are the end pixels,
 % e.g. for MMSA on p42r34, % [3280 3460;3740 3920]
+%takes a while if not subsetting, e.g. p42r34 
+% 39.9686 min for fsca, w/ interpolation and everything else 223.21 min
 
 %output
 % o struct with fields:
@@ -43,10 +44,17 @@ t1=tic;
 
 [Slope,hdr]=GetTopography(topofile,'slope');
 Aspect=GetTopography(topofile,'aspect');
+% z=double(GetTopography(topofile,'elevation'));
 
 mu=sunslope(cosd(solarZ),180-phi0,Slope,Aspect);
-smask=GetHorizon(topofile,180-phi0,acosd(mu));
+smask=false(size(mu));
+%add in +/- 5 deg
 
+for i=-5:10:5
+    for j=-5:10:5
+    smask=smask | GetHorizon(topofile,180-(phi0+i),acosd(mu)+j);
+    end
+end
 %if crop w/o reprojection
 if ~isempty(subset)
     rl=subset(1,1):subset(1,2);
@@ -60,6 +68,7 @@ if ~isempty(subset)
     smask=smask(rl,cl);
     Slope=Slope(rl,cl);
     Aspect=Aspect(rl,cl);
+%     z=z(rl,cl);
 end
 
 smask=~imfill(~smask,8,'holes'); %fill in errant holes
@@ -87,18 +96,26 @@ CC=load(CCfile);
 cc=rasterReprojection(CC.cc,CC.RefMatrix,CC.ProjectionStructure,...
     hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
 cc(isnan(cc))=0;
+cc=double(cc);
 
 t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 o=run_scagd(t0,t,acosd(mu),Ffile,~smask | nanmask,...
-    fsca_thresh,pshade,dust_thresh,tolval);
+    fsca_thresh,pshade,dust_thresh,tolval,cc);
 
 % spatial interpolation
 ifsca=o.fsca;
 ifsca(nanmask)=0;
 ifsca(~smask & ~nanmask)=NaN;
+%ifsca(cc>0)=NaN;
 ifsca=inpaint_nans(ifsca,4);
+
+% t=~isnan(ifsca);
+% F=scatteredInterpolant(x(t),y(t),z(t),ifsca(t),'linear',...
+%     'nearest');
+% ifsca=F(x,y,z);
+
 ifsca=ifsca./(1-cc);
 ifsca(ifsca>1)=1;
 ifsca(ifsca<fsca_thresh)=0;
@@ -107,7 +124,7 @@ ifsca(nanmask)=NaN;
 igrainradius=o.grainradius;
 igrainradius(nanmask)=0;
 igrainradius(~smask & ~nanmask)=NaN;
-igrainradius(igrainradius>1000)=NaN;
+igrainradius(igrainradius>1190)=NaN;
 igrainradius=inpaint_nans(igrainradius,4);
 igrainradius(ifsca==0)=NaN;
 igrainradius(nanmask)=NaN;
@@ -122,61 +139,10 @@ idust(nanmask)=NaN;
 out.fsca=ifsca;
 out.grainradius=igrainradius;
 out.dust=idust;
+out.shade=o.shade;
+out.hdr=hdr;
 
 et=toc(t1);
-sprintf('total elapsed time %4.2f min\n',et/60);
+fprintf('total elapsed time %4.2f min\n',et/60);
 
-if plotbool
-    % plot up results
-    f1=figure('Position',[0 0 1500 800],'Color',[0.6 0.6 0.6]);
-    ha=tight_subplot(2, 3, 0.01, 0.02, [0 0.03]);
-    
-    for j=1:6
-        axes(ha(j));
-        ax=gca;
-        
-        if j==1
-            xx=squeeze(R.bands(:,:,[3 2 1]));
-        elseif j==2
-            xx=ifsca;
-        elseif j==3
-            xx=igrainradius;
-        elseif j==4
-            xx=idust;
-        elseif j==5
-            xx=o.shade;
-        elseif j==6
-            xx=cc;
-        end
-        
-        if j==1
-            image(xx);
-        else
-            imagesc(xx);
-        end
-        axis image;
-        
-        ax.XAxis.Color = 'none';
-        ax.YAxis.Color = 'none';
-        set(ax,'XTick',[],'YTick',[],'YDir','reverse',...
-            'Color',[0.6 0.6 0.6]);
-        freezeColors('nancolor',[0.6 0.6 0.6]);
-        
-        if j>1
-            c=colorbar('Location','EastOutside','Color','w');
-            c.Label.Color=[1 1 1];
-            c.FontSize=15;
-            if j==2
-                c.Label.String='fsca, canopy adj. ';
-            elseif j==3
-                c.Label.String='grain radius, \mum';
-            elseif j==4
-                c.Label.String='dust conc, ppmw';
-            elseif j==5
-                c.Label.String='fshade';
-            elseif j==6
-                c.Label.String='fcanopy, static';
-            end
-        end 
-    end
 end

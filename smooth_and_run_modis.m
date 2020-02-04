@@ -26,7 +26,7 @@ function out=smooth_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
 % grainradius_nPersist: min # of consecutive days needed with normal 
 % grain sizes to be kept as snow, e.g. 7
 % el_cutoff, min elevation for snow, m - scalar, e.g. 1500
-% cc - static canopy cover, single or doube, same size as watermask,
+% cc - static canopy cover, single or double, same size as watermask,
 % 0-1 for viewable gap fraction correction
 
 %output:
@@ -36,7 +36,6 @@ function out=smooth_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
 %   dust: MxNxd
 t1=tic;
 %run in one month chunks and save output
-%79 hr for 1 tile for 1 year
 dv=datevec(matdates);
 m=unique(dv(:,2),'stable');
 
@@ -46,7 +45,7 @@ for i=1:length(m)
     [R,~,solarZ,~,weights]=...
     smoothMODIScube(tile,rundates,hdfdir,topofile,watermask);
     out=run_scagd(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
-        dust_thresh,tolval);
+        dust_thresh,tolval,cc);
     fname=fullfile(outloc,[datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
     %fsca

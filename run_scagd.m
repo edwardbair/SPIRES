@@ -1,5 +1,5 @@
-function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
-    pshade,dust_thresh,tolval)
+function out=run_scagd(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
+    pshade,dust_thresh,tolval,cc)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -18,6 +18,7 @@ function out=run_scagd_modis(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
 % dust_tresh: threshold cutoff to return dust values, e.g. 0.85
 % tolval: unique row tolerance value, i.e. 0.05 - bigger number goes faster
 % as more pixels are grouped together
+% cc - canopy cover
 
 %output:
 %   out : struct w fields
@@ -33,7 +34,6 @@ end
 
 [X,Y]=meshgrid(1:sz(1),1:sz(2));
 
-
 fsca=zeros([sz(1)*sz(2) sz(4)]);
 grainradius=NaN([sz(1)*sz(2) sz(4)]);
 dust=NaN([sz(1)*sz(2) sz(4)]);
@@ -45,6 +45,7 @@ watermask=reshape(watermask,[sz(1)*sz(2) 1]);
 shade=zeros(size(fsca));
 X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
+cc=reshape(cc,[sz(1)*sz(2) 1]);
 
 red_b=3;
 swir_b=6;
@@ -56,7 +57,7 @@ for i=1:sz(4) %for each day
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
         (thisR(:,red_b)+thisR(:,swir_b));
     t=NDSI > 0  & ~watermask & ~isnan(thissolarZ);
-    M=[round(thisR,2) round(R0,2) round(thissolarZ)];
+    M=[round(thisR,2) round(R0,2) round(thissolarZ) round(cc,2)];
     M=M(t,:); % only values w/ > 0 NDSI and no water
     XM=X(t); % X coordinates for M
     YM=Y(t); % Y coordinates for M
@@ -68,7 +69,8 @@ for i=1:sz(4) %for each day
         pxR=c(j,1:7);
         pxR0=c(j,8:14);
         sZ=c(j,15);
-        o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,[]);
+        thiscc=c(j,16);
+        o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,[],thiscc);
         sol=o.x; %fsca,shade,grain radius,dust
         sol(1)=sol(1)/(1-sol(2));%normalize by fshade
         temp(j,:)=sol;
@@ -86,11 +88,12 @@ for i=1:sz(4) %for each day
                 pxR=c(j,1:7);
                 pxR0=c(j,8:14);
                 sZ=c(j,15);
+                thiscc=c(j,16);
                 idx=im{j}(1); %index to row of M correspnding to c
                 [~,idx_s]=pdist2([XM(tt),YM(tt)],[XM(idx),YM(idx)],...
                     'euclidean','Smallest',4);
                 D=mean(sdust(idx_s)); % mean of closest 4 dust values
-                o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,D);
+                o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,D,thiscc);
                 sol=o.x; %fsca,shade,grain radius,dust
                 sol(1)=sol(1)/(1-sol(2));%normalize by fshade
                 temp2(j,:)=sol;
