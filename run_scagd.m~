@@ -95,15 +95,12 @@ for i=1:sz(4) %for each day
                 [~,idx_s]=pdist2([XM(tt),YM(tt)],[XM(idx),YM(idx)],...
                     'euclidean','Smallest',4);
                 D=mean(sdust(idx_s)); % mean of closest 4 dust values
-                if D >= 0.1 %if snow is dirty
+                if D > 0 %if snow is dirty
                     o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,D,...
                         thiscc);
-                    sol=o.x; %fsca,shade,grain radius,dust
-                    sol(1)=sol(1)/(1-sol(2));%normalize by fshade
-                    temp2(j,:)=sol;
-                else
-                    temp2(j,:)=[temp(j,1:3) 0];
-                end  
+                sol=o.x; %fsca,shade,grain radius,dust
+                sol(1)=sol(1)/(1-sol(2));%normalize by fshade
+                temp2(j,:)=sol;
             end
         end
     end

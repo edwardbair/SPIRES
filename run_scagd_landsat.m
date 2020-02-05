@@ -102,7 +102,7 @@ t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 o=run_scagd(t0,t,acosd(mu),Ffile,~smask | nanmask,...
-    fsca_thresh,pshade,dust_thresh,tolval,cc);
+    fsca_thresh,pshade,dust_thresh,tolval,cc,hdr);
 
 % spatial interpolation
 ifsca=o.fsca;

@@ -25,8 +25,8 @@ if cc==0
     ccflag=false;
 end 
 
-% options = optimoptions('fmincon','Display','none','Algorithm','sqp');
-options=optimoptions('fmincon','Display','none');
+options = optimoptions('fmincon','Display','none','Algorithm','sqp');
+%soptions=optimoptions('fmincon','Display','none');
 
 % make all inputs column vectors
 if ~iscolumn(R)

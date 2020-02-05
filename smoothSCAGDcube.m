@@ -55,7 +55,7 @@ for i=1:length(matdates)
     dust(:,:,i)=dust_t;
 end
 
-Z=GetTopography(topofile,'elevation');
+[Z,hdr]=GetTopography(topofile,'elevation');
 Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
 
@@ -116,8 +116,6 @@ dust=smoothDataCube(dust,newweights,'mask',anyfsca,...
     'method','smoothingspline','SmoothingParam',0.02);
 
 dust(fsca==0 | isnan(fsca))=NaN;
-
-[~,hdr]=GetTopography(topofile,'elevation');
 
 out.matdates=matdates;
 out.hdr=hdr;

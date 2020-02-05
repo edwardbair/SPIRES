@@ -38,6 +38,7 @@ t1=tic;
 %run in one month chunks and save output
 dv=datevec(matdates);
 m=unique(dv(:,2),'stable');
+[~,hdr]=GetTopography(topofile,'elevation');
 
 for i=1:length(m)
     idx=dv(:,2)==m(i);
@@ -45,7 +46,7 @@ for i=1:length(m)
     [R,~,solarZ,~,weights]=...
     smoothMODIScube(tile,rundates,hdfdir,topofile,watermask);
     out=run_scagd(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
-        dust_thresh,tolval,cc);
+        dust_thresh,tolval,cc,hdr);
     fname=fullfile(outloc,[datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
     %fsca
