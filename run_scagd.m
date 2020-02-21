@@ -1,25 +1,27 @@
 function out=run_scagd(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
-    pshade,dust_thresh,tolval,cc,hdr)
+    pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
-% R0 - background image (MxNxb). Recommend using time-spaced smoothed
-% cube from a month with minimum fsca and clouds, like August or September,
-% then taking minimum of reflectance for each band (b)
+% R0 - background image (MxNxb). Recommend a sinle day with no clouds, 
+%no snow and and low sensor zenith angle
 % R - 4D cube of time-space smoothed reflectances (MxNxbxd) with
 % dimensions: x,y,band,day
 % solarZ: solar zenith angles (MxNxd) for R
 % Ffile, location of griddedInterpolant object that produces reflectances
 %for each band
-% with inputs: grain radius, dust, solar zenith angle, band
-% watermask: logical mask, true for water
+% with inputs: grain radius (um), dust (ppmw), solar zenith angle (deg),
+% band # (not necessarily in order of wavelength)
+% watermask: logical mask (MxN), true for water
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
-% pshade: shade spectra (bx1); reflectances
-% dust_tresh: threshold cutoff to return dust values, e.g. 0.85
+% pshade: shade spectra (bx1) or photometric scalar, e.g. 0.15
+% dust_tresh: threshold cutoff to return dust values, e.g. 0.95
 % tolval: unique row tolerance value, i.e. 0.05 - bigger number goes faster
 % as more pixels are grouped together
-% cc - canopy cover
-%hdr w/ map info
+% cc - canopy cover (MxN), 0-1. No NaNs
+% hdr - header struct w/ map info, see GetCoordinateInfo.m
+% red_b - red band, e.g. 3 for MODIS and L8
+% swir_b - SWIR band, e.g. 6 for MODIS and L8
 
 %output:
 %   out : struct w fields
@@ -34,7 +36,6 @@ if length(sz) == 3
 end
 
 [X,Y]=pixcenters(hdr.RefMatrix,size(watermask),'makegrid');
-% [X,Y]=meshgrid(1:sz(1),1:sz(2));
 
 fsca=zeros([sz(1)*sz(2) sz(4)]);
 grainradius=NaN([sz(1)*sz(2) sz(4)]);
@@ -48,9 +49,6 @@ shade=zeros(size(fsca));
 X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
 cc=reshape(cc,[sz(1)*sz(2) 1]);
-
-red_b=3;
-swir_b=6;
 
 for i=1:sz(4) %for each day
     thisR=squeeze(R(:,:,i));
@@ -66,12 +64,12 @@ for i=1:sz(4) %for each day
     [c,im,~]=uniquetol(M,tolval,'ByRows',true,...
         'DataScale',1,'OutputAllIndices',true);
     tic;
-    temp=zeros(length(c),4); %fsca,shade,grain radius,dust
-    parfor j=1:length(c) %solve for unique (w/ tol) rows
-        pxR=c(j,1:7);
-        pxR0=c(j,8:14);
-        sZ=c(j,15);
-        thiscc=c(j,16);
+    temp=zeros(size(c,1),4); %fsca,shade,grain radius,dust
+    parfor j=1:size(c,1) %solve for unique (w/ tol) rows
+        pxR=c(j,1:sz(3));
+        pxR0=c(j,sz(3)+1:end-2);
+        sZ=c(j,end-1);
+        thiscc=c(j,end);
         o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,[],thiscc);
         sol=o.x; %fsca,shade,grain radius,dust
         sol(1)=sol(1)/(1-sol(2));%normalize by fshade
@@ -79,18 +77,17 @@ for i=1:sz(4) %for each day
     end
     %make a copy of temp for use below
     temp2=temp;
-    %median_dustval=median(temp(:,4),'omitnan');
     %re-solve for places w/ NaN dust 
     tt=~isnan(temp(:,4));
     if nnz(tt) >= 4 % if there are at least 4 solved dust values
         sdust=temp(tt,4); %solved dust values
-        parfor j=1:length(c) 
+        parfor j=1:size(c,1) 
             if isnan(temp(j,4)) % if there's no dust value, re-solve using
                 %interpolated dust 
-                pxR=c(j,1:7);
-                pxR0=c(j,8:14);
-                sZ=c(j,15);
-                thiscc=c(j,16);
+                pxR=c(j,1:sz(3));
+                pxR0=c(j,sz(3)+1:end-2);
+                sZ=c(j,end-1);
+                thiscc=c(j,end);
                 idx=im{j}(1); %index to row of M correspnding to c
                 [~,idx_s]=pdist2([XM(tt),YM(tt)],[XM(idx),YM(idx)],...
                     'euclidean','Smallest',4);
@@ -110,8 +107,8 @@ for i=1:sz(4) %for each day
     %create a list of indices
     %and fill matrices corresponding to NDSI > 0 & ~water
     %can't use parfor for this
-    repxx=zeros(length(M),4);
-    for j=1:length(temp2) % the unique indices
+    repxx=zeros(size(M,1),4);
+    for j=1:size(temp2,1) % the unique indices
         idx=im{j}; %indices for each unique val
         repxx(idx,1)=temp2(j,1); %fsca
         %don't forget shade is elem 2

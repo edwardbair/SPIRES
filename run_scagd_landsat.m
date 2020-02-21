@@ -23,7 +23,7 @@ function out=run_scagd_landsat(r0dir,rdir,topofile,...
 % row1/col1 are the starting pixels and row2/col2 are the end pixels,
 % e.g. for MMSA on p42r34, % [3280 3460;3740 3920]
 %takes a while if not subsetting, e.g. p42r34 
-% 39.9686 min for fsca, w/ interpolation and everything else 223.21 min
+
 
 %output
 % o struct with fields:
@@ -32,6 +32,9 @@ function out=run_scagd_landsat(r0dir,rdir,topofile,...
 % dust,0-1
 % shade,0-1
 % all the size of the first two dimension of R or R0
+
+red_b=3;
+swir_b=6;
 
 %do terrain first
 %need to account for shaded pixels
@@ -44,17 +47,13 @@ t1=tic;
 
 [Slope,hdr]=GetTopography(topofile,'slope');
 Aspect=GetTopography(topofile,'aspect');
-% z=double(GetTopography(topofile,'elevation'));
 
 mu=sunslope(cosd(solarZ),180-phi0,Slope,Aspect);
-smask=false(size(mu));
-%add in +/- 5 deg
 
-for i=-5:10:5
-    for j=-5:10:5
-    smask=smask | GetHorizon(topofile,180-(phi0+i),acosd(mu)+j);
-    end
-end
+h=GetHorizon(topofile,180-phi0);
+%in sun if solarZ > 10 deg, shaded if solarZ <= 10 deg
+smask= (90-acosd(mu))-h > 10;
+
 %if crop w/o reprojection
 if ~isempty(subset)
     rl=subset(1,1):subset(1,2);
@@ -68,17 +67,9 @@ if ~isempty(subset)
     smask=smask(rl,cl);
     Slope=Slope(rl,cl);
     Aspect=Aspect(rl,cl);
-%     z=z(rl,cl);
 end
 
 smask=~imfill(~smask,8,'holes'); %fill in errant holes
-
-%reproject both to match R
-% mu=rasterReprojection(mu,hdr.RefMatrix,hdr.ProjectionStructure,...
-%     R0.ProjectionStructure,'rasterref',R0.RasterReference);
-% smask=rasterReprojection(smask,hdr.RefMatrix,hdr.ProjectionStructure,...
-%     R0.ProjectionStructure,'Method','nearest','rasterref',...
-%     R0.RasterReference);
 
 %get R0 refl and reproject to hdr
 R0=getOLIsr(r0dir,hdr);
@@ -102,19 +93,13 @@ t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 o=run_scagd(t0,t,acosd(mu),Ffile,~smask | nanmask,...
-    fsca_thresh,pshade,dust_thresh,tolval,cc,hdr);
+    fsca_thresh,pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b);
 
 % spatial interpolation
 ifsca=o.fsca;
 ifsca(nanmask)=0;
 ifsca(~smask & ~nanmask)=NaN;
-%ifsca(cc>0)=NaN;
 ifsca=inpaint_nans(ifsca,4);
-
-% t=~isnan(ifsca);
-% F=scatteredInterpolant(x(t),y(t),z(t),ifsca(t),'linear',...
-%     'nearest');
-% ifsca=F(x,y,z);
 
 ifsca=ifsca./(1-cc);
 ifsca(ifsca>1)=1;

@@ -1,5 +1,4 @@
-function [ output_cube ] = smoothDataCube( cube, weight,varargin )
-% [ output_cube ] = smoothDataCube( cube, weight [,'mask',mask,'method',method] )
+function [ output_cube ] = smoothDataCube(cube, weight,varargin)
 %
 % Time-smooths data cube either with smoothing spline or discrete cosine transform
 % Input
@@ -7,17 +6,22 @@ function [ output_cube ] = smoothDataCube( cube, weight,varargin )
 %   weight - corresponding weights
 % Optional input - name-value pairs
 %   'mask' (logical) - 2D portion of cube to be analyzed, if missing then whole cube
-%   'method' - either 'smoothingspline' or 'smoothn' (default, Damien Garcia's
+%   'method' - either 'smoothingspline', 'slm' (shape language toolbox), 'smoothn' (default, Damien Garcia's
 %       smoothn from the MATLAB file exchange)
 %   Note: smoothn is a simultaneous 3D smoothing (i.e. spatial smearing),
 %   while smoothingspline only smooths in the time dimension
 %   'bordersize' (m x n), default 8x8, see "doc blockproc.m"
+%   for slm method only:
+%   'monotonic', string either 'increasing' or 'decreasing, see slmset.m
+%   'fcube' (m x n), difference datacube to follow for monotonic 
+%    increasing/decreasing, see slmset.m
+%   'knots',number of knots for spline, see slmset.m
 %
 % Output
 %   output_cube - smoothed values, NaN outside mask if specified
 %
 % Jeff Dozier 2016-01-23
-% modified by NB 2020-01-08
+% modified by NB 2020-02-17
 
 %% process required argument
 p = inputParser;
@@ -26,6 +30,9 @@ defaultMethod = 'smoothn';
 defaultBorderSize = [8 8];
 defaultBlockSize = bestblk([size(cube,1) size(cube,2)],200);
 defaultSmoothingParam= [];
+defaultfcube = [];
+defaultMonotonic = 'increasing';
+defaultKnots = 6;
 
 addRequired(p,'cube',@isnumeric)
 addRequired(p,'weight',@isnumeric)
@@ -34,11 +41,17 @@ addParameter(p,'method',defaultMethod,@ischar)
 addParameter(p,'bordersize',defaultBorderSize,@isnumeric);
 addParameter(p,'blocksize',defaultBlockSize,@isnumeric);
 addParameter(p,'smoothingparam',defaultSmoothingParam,@isnumeric);
+addParameter(p,'monotonic',defaultMonotonic,@ischar);
+addParameter(p,'fcube',defaultfcube,@(x)ismatrix(x)||islogical(x));
+addParameter(p,'knots',defaultKnots,@isnumeric);
 
 parse(p,cube,weight,varargin{:})
 cube = p.Results.cube;
 weight = p.Results.weight;
 sp=p.Results.smoothingparam;
+monotonic=p.Results.monotonic;
+fcube=p.Results.fcube;
+knots=p.Results.knots;
 
 assert(isequal(size(cube),size(weight)),'size of cube and weights must be equal')
 % whole image if mask not specified
@@ -80,8 +93,6 @@ switch method
         % by column
         sCube = nan(size(iCube));
         weight(isnan(weight) | weight==0) = .01; % make sure we have enough weights
-        %x = (1:size(iCube,1))';
-        %         if ~isempty(invoke_parpool())
         k=gcp('nocreate');
         if ~isempty(k)
             parfor c=1:size(iCube,2)
@@ -113,6 +124,8 @@ switch method
                     end
                 end
             end
+        else
+            error('start a parpool up');
         end
         
         % back into original
@@ -152,39 +165,83 @@ switch method
                     if nansum(y) == 0 || nnz(t)<2
                         sCube(:,c) = zeros(size(y));
                     else
-                        %fill NaNs first
-%                         y(~t)=interp1(x(t),y(t),x(~t),'linear');
                         t=isnan(y);
-%                         y(t)=interp1(x(~t),y(~t),x(t),'nearest','extrap');
                         F = fit(x,y,'smoothingspline','weights',weight(:,c),...
                             'exclude',t,'SmoothingParam',sp);
                         sCube(:,c) = F(x);
-%                         yy=csaps(x(~t),y(~t),sp,x,weight(~t,c));
-%                         sCube(:,c)=yy;
                     end
                 end
             end
         else
-            warning('not able to start parallel pool, running sequentially')
-            idx = find(mask);
-            for c=idx
-                y = iCube(:,c);
-                 t=~isnan(y);
-                if nansum(y) == 0 || nnz(t)<2
-                    sCube(:,c) = zeros(size(y));
-                else
-                    %fill NaNs first
-                    %y(~t)=interp1(x(t),y(t),x(~t),'linear');
-                    t=isnan(y);
-                    %y(t)=interp1(x(~t),y(~t),x(t),'nearest','extrap');
-                    %t=isnan(y);
-%                         y(t)=interp1(x(~t),y(~t),x(t),'nearest','extrap');
-                    F = fit(x,y,'smoothingspline','weights',weight(:,c),...
-                            'exclude',t,'SmoothingParam',sp);
-                    %F = fit(x,y,'smoothingspline','weights',weight(:,c));
-                    sCube(:,c) = F(x);
+            error('start a parpool');
+        end
+        
+        % back into original
+        cube(:,fcol:lcol) = cast(truncateLimits(sCube,limits),'like',cube);
+        
+        output_cube = reshape(cube',N(1),N(2),N(3));
+        
+    case 'slm'
+        % reshape and transpose cube to put time sequence next to each other in memory
+        % (MATLAB is column-major order)
+        monotonicflag=true;
+        if isempty(fcube)
+            monotonicflag=false;
+        end
+        cube = reshape(cube,N(1)*N(2),N(3))';
+        weight = reshape(weight,N(1)*N(2),N(3))';
+        mask = reshape(mask,N(1)*N(2),1)';
+        % boundaries of the mask
+        fcol = find(mask,1,'first');
+        if isempty(fcol) % if the mask is all false
+            output_cube = reshape(cube',N(1),N(2),N(3));
+            return
+        end
+        lcol = find(mask,1,'last');
+        iCube = double(cube(:,fcol:lcol));
+        if monotonicflag
+            fcube = reshape(fcube,N(1)*N(2),N(3))';
+            FCube = double(fcube(:,fcol:lcol));
+        else
+            FCube = zeros(size(iCube)); %needed for parfor
+        end
+        weight = double(weight(:,fcol:lcol));
+        mask = mask(fcol:lcol);
+        limits = [nanmin(iCube(:)) nanmax(iCube(:))];
+        
+        % by column
+        sCube = nan(size(iCube));
+        weight(isnan(weight) | weight==0) = .01; % make sure we have enough weights
+        x = (1:size(iCube,1))';
+        k=gcp('nocreate');
+        if ~isempty(k)
+            parfor c=1:size(iCube,2)
+                if mask(c)
+                    y = iCube(:,c);
+                        t=~isnan(y);
+                    if nansum(y) == 0 || nnz(t)<2
+                        sCube(:,c) = zeros(size(y));
+                    else
+                        if monotonicflag
+                            f=FCube(:,c);
+                            %find contiguous regions
+                            [start,finish]=contiguous(f);
+                            %use those to specify where spline should be
+                            %monotonically increasing/decreasing
+                            F=slmengine(x,double(y),monotonic,...
+                                [start finish],'weights',weight(:,c),...
+                                'knots',knots);
+                            sCube(:,c) = slmeval(x,F);
+                        else
+                            F=slmengine(x,double(y),'weights',weight(:,c),...
+                                'knots',knots);
+                            sCube(:,c) = slmeval(x,F);
+                        end
+                    end
                 end
             end
+        else
+            error('start a parpool');
         end
         
         % back into original

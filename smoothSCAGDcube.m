@@ -1,6 +1,7 @@
-function out=smoothSCAGDcube(outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc)
+function out=smoothSCAGDcube(tile,outloc,matdates,...
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice)
 %function to smooth cube after running through SCAGD
+% tile - tile name, string e.g. 'h08v05'
 % outloc - output location, string
 % matdates - datenum vector for image days
 % grainradius_nPersist: min # of consecutive days needed with normal 
@@ -11,13 +12,14 @@ function out=smoothSCAGDcube(outloc,matdates,...
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % cc - static canopy cover, single or doube, same size as watermask,
 % 0-1 for viewable gap fraction correction
+% fice - fraction of ice/neve, single or double, 0-1, mxn
 %output: struct out w/ fields
 %fsca, grainradius, dust, and hdr (geographic info)
 
 %1.8 hr/yr for h08v05
 for i=1:length(matdates)
     dv=datevec(matdates(i));
-    fname=fullfile(outloc,[datestr(dv,'yyyymm') '.mat']);
+    fname=fullfile(outloc,[tile datestr(dv,'yyyymm') '.mat']);
     m=matfile(fname);
     if i==1
         fsca=zeros([size(m.fsca,1) size(m.fsca,2) length(matdates)],'single');
@@ -60,7 +62,7 @@ Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
 
 wm=repmat(watermask,[1 1 size(fsca,3)]);
-
+fice=repmat(fice,[1 1 size(fsca,3)]);
 fsca(Zmask | wm) = 0;
 
 %create mask for cube where radius is > 50 & radius < 1190 for 7 or more days
@@ -74,8 +76,6 @@ fsca(~gmask & ~(fsca==0))=NaN;
 newweights=weights;
 newweights(isnan(fsca))=0;
 %fill in and smooth NaNs
-%fsca=smoothDataCube(fsca,newweights,'mask',~watermask,...
-%    'method','smoothingspline');
 fsca=smoothDataCube(fsca,newweights,'mask',~watermask,...
    'method','smoothingspline','SmoothingParam',0.02);
 %get some small fsca values from smoothing - set to zero
@@ -85,36 +85,32 @@ fsca(wm)=NaN;
 cc(isnan(cc))=0;
 fsca=fsca./(1-cc);
 fsca(fsca>1)=1;
+% fice correction
+fsca=fsca./(1-fice);
+fsca(fsca>1)=1;
+%min value of fsca is fice
+t=fsca<fice;
+fsca(t)=fice(t);
 
 %create mask of any fsca for interpolation
 anyfsca=any(fsca,3);
 
-%convert zeros(uint) to back to NaN
-%grainradius(grainradius==0)=NaN;
-% create mask for low fsca (includes zeros)
-%lowfscamask= fsca > 0 & fsca < 0.30;
-%set all low fsca values to NaN
-%grainradius(lowfscamask)=NaN;
 % set all weights for NaNs to 0
 newweights=weights;
 newweights(isnan(fsca) | fsca==0)=0;
 
 grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca,...
-    'method','smoothingspline','SmoothingParam',0.02);
+     'method','smoothingspline','SmoothingParam',0.75);
+
 grainradius(fsca==0 | isnan(fsca))=NaN;
 
-%convert zeros back to NaN
-%dust(dust==0)=NaN;
-%set all dust values to NaN
-%dust(lowfscamask)=NaN;
-%set weights
-%newweights=weights;
-%newweights(isnan(dust))=0; %if its NaN its zero
-%dust(isnan(dust))=0; % need zeros for spline smoothing 
-
+%use a different approach for dust
+%compute grain sizes differences
+dG=cat(3,zeros(size(grainradius,1,2)),diff(grainradius,1,3));
+%send logical cube for increasing grain sizes
+fcube=dG>=0;
 dust=smoothDataCube(dust,newweights,'mask',anyfsca,...
-    'method','smoothingspline','SmoothingParam',0.02);
-
+    'method','slm','monotonic','increasing','fcube',fcube,'knots',-3);
 dust(fsca==0 | isnan(fsca))=NaN;
 
 out.matdates=matdates;

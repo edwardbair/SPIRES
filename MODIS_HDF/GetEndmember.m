@@ -11,7 +11,7 @@ function [ X, varargout ] = GetEndmember( filename, whichVariable, varargin )
 %   filename - HDF 5 or .mat  filename
 %   whichVariable - not all are in every file, but choices could be 'snow',
 %   'rock' or 'soil', 'vegetation', 'grain_size', 'drfs_grnsz', 'deltavis',
-%   'shade'
+%   'shade','dust'
 %   (only first 4 letters are considered, and are case-insensitive)
 % Optional input
 %   date - followed by single date, vector of length 2 specifying range, or
@@ -87,6 +87,8 @@ switch Var
         whichVariable = 'drfs_grnsz';
     case 'delt'
         whichVariable = 'deltavis';
+    case 'dust'
+        whichVariable = 'dust';
     case 'rms'
         whichVariable = 'rms';
     otherwise
