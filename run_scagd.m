@@ -89,9 +89,10 @@ for i=1:sz(4) %for each day
                 sZ=c(j,end-1);
                 thiscc=c(j,end);
                 idx=im{j}(1); %index to row of M correspnding to c
-                [~,idx_s]=pdist2([XM(tt),YM(tt)],[XM(idx),YM(idx)],...
-                    'euclidean','Smallest',4);
-                D=mean(sdust(idx_s)); % mean of closest 4 dust values
+                dist=pdist2([XM(tt),YM(tt)],[XM(idx),YM(idx)]);
+                %inverse distance weighted average
+                w=1./dist;
+                D=(sum(w.*sdust))./(sum(w));
                 if D >= 0.1 %if snow is dirty
                     o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,D,...
                         thiscc);

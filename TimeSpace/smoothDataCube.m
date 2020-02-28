@@ -16,6 +16,7 @@ function [ output_cube ] = smoothDataCube(cube, weight,varargin)
 %   'fcube' (m x n), difference datacube to follow for monotonic 
 %    increasing/decreasing, see slmset.m
 %   'knots',number of knots for spline, see slmset.m
+%   'endconditions', e.g. 'estimate' (default), see slmset.m
 %
 % Output
 %   output_cube - smoothed values, NaN outside mask if specified
@@ -33,6 +34,7 @@ defaultSmoothingParam= [];
 defaultfcube = [];
 defaultMonotonic = 'increasing';
 defaultKnots = 6;
+defaultEndConditions = 'estimate';
 
 addRequired(p,'cube',@isnumeric)
 addRequired(p,'weight',@isnumeric)
@@ -44,6 +46,7 @@ addParameter(p,'smoothingparam',defaultSmoothingParam,@isnumeric);
 addParameter(p,'monotonic',defaultMonotonic,@ischar);
 addParameter(p,'fcube',defaultfcube,@(x)ismatrix(x)||islogical(x));
 addParameter(p,'knots',defaultKnots,@isnumeric);
+addParameter(p,'endconditions',defaultEndConditions,@ischar);
 
 parse(p,cube,weight,varargin{:})
 cube = p.Results.cube;
@@ -52,6 +55,7 @@ sp=p.Results.smoothingparam;
 monotonic=p.Results.monotonic;
 fcube=p.Results.fcube;
 knots=p.Results.knots;
+endconditions=p.Results.endconditions;
 
 assert(isequal(size(cube),size(weight)),'size of cube and weights must be equal')
 % whole image if mask not specified
@@ -230,11 +234,11 @@ switch method
                             %monotonically increasing/decreasing
                             F=slmengine(x,double(y),monotonic,...
                                 [start finish],'weights',weight(:,c),...
-                                'knots',knots);
+                                'knots',knots,'endconditions',endconditions);
                             sCube(:,c) = slmeval(x,F);
                         else
                             F=slmengine(x,double(y),'weights',weight(:,c),...
-                                'knots',knots);
+                                'knots',knots,'endconditions',endconditions);
                             sCube(:,c) = slmeval(x,F);
                         end
                     end

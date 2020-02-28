@@ -84,12 +84,8 @@ nanmask=all(isnan(R0.bands),3);
 R=getOLIsr(rdir,hdr);
 
 %cloud mask
-NDSI=(R.bands(:,:,red_b)-R.bands(swir_b(:,:,swir_b)))./...
-    (R.bands(:,:,red_b)+R.bands(swir_b(:,:,swir_b)));
-notClouds = (R.bands(:,:,2) > 0.6 & R.bands(:,:,2) < 0.2 & ...
-    R.bands(:,:,7) < 0.2) | NDSI>0.7;
+NDSI=(R.bands(:,:,red_b)-R.bands(swir_b(:,:,swir_b))./(red_b+swir_b)
 
-cloudMask = operationalCloudMask & ~notClouds;
 
 % load and reproject canopy data to hdr
 CC=load(CCfile);

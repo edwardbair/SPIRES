@@ -16,7 +16,7 @@ function out=smoothSCAGDcube(tile,outloc,matdates,...
 %output: struct out w/ fields
 %fsca, grainradius, dust, and hdr (geographic info)
 
-%1.8 hr/yr for h08v05
+%1.34 hr/yr for h08v05, 2017
 for i=1:length(matdates)
     dv=datevec(matdates(i));
     fname=fullfile(outloc,[tile datestr(dv,'yyyymm') '.mat']);
@@ -99,18 +99,34 @@ anyfsca=any(fsca,3);
 newweights=weights;
 newweights(isnan(fsca) | fsca==0)=0;
 
+% grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca,...
+%      'method','smoothingspline','SmoothingParam',0.75);
+dF=cat(3,zeros(size(fsca,1,2)),diff(fsca,1,3));
+%send logical cube for decreasing fsca
+fcube=dF<=0;
 grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca,...
-     'method','smoothingspline','SmoothingParam',0.75);
+    'method','slm','monotonic','increasing','fcube',fcube,'knots',-3,...
+    'endconditions','periodic');
+
 
 grainradius(fsca==0 | isnan(fsca))=NaN;
 
-%use a different approach for dust
+%use a different approach
+%replace high values with NaN
+% parfor i=1:size(dust,3)
+%    xx=squeeze(dust(:,:,i));
+%    v=quantile(xx(:),0.95);
+%    xx(xx>v)=NaN;
+%    dust(:,:,i)=xx;
+% end
 %compute grain sizes differences
 dG=cat(3,zeros(size(grainradius,1,2)),diff(grainradius,1,3));
 %send logical cube for increasing grain sizes
 fcube=dG>=0;
+
 dust=smoothDataCube(dust,newweights,'mask',anyfsca,...
-    'method','slm','monotonic','increasing','fcube',fcube,'knots',-3);
+    'method','slm','monotonic','increasing','fcube',fcube,'knots',-3,...
+    'endconditions','periodic');
 dust(fsca==0 | isnan(fsca))=NaN;
 
 out.matdates=matdates;

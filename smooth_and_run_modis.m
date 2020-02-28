@@ -29,7 +29,7 @@ function out=smooth_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
 % cc - static canopy cover, single or double, same size as watermask,
 % 0-1 for viewable gap fraction correction
 % fice - ice fraction, single or double 0-1
-
+%5.77 hr for h08v05 WY 2017 w/ 62 cores
 %output:
 %   out:
 %   fsca: MxNxd
