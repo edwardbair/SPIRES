@@ -1,4 +1,4 @@
-function [ X, outputFolder, varargout] = GetLandsat8_Collection1( filepath, whichVariable, varargin )
+function [ X, outputFolder, varargout] = GetLandsat8( filepath, whichVariable, varargin )
 %extract variable from Landsat8 input file - WORKS WITH LANDSAT 8
 %COLLECTION 1 DATA
 % [ X, outputFolder, varargout] = GetLandsat8_Collection1( filepath, whichVariable, varargin )
@@ -86,15 +86,15 @@ switch lower(whichVariable)
         if nargout>numOut
             varargout{1} = geotiffinfo(BQAfile);
         end
-        X = unpackLandsat8BQA_Collection1(LS8_BQA,datatype);
+        X = unpackLandsat8BQA(LS8_BQA,datatype);
     case 'allbands'
-        X_30m = GetLandsat8_Collection1(dataFolder,'band1',varargin{:});
+        X_30m = GetLandsat8(dataFolder,'band1',varargin{:});
         for b=2:11
             if b == 8 %pan band is a different sized matrix
-                X_15m = GetLandsat8_Collection1(dataFolder,'band8',varargin{:});
+                X_15m = GetLandsat8(dataFolder,'band8',varargin{:});
                 continue
             end
-            X_30m = cat(3,X_30m,GetLandsat8_Collection1(dataFolder,['band' num2str(b)],varargin{:}));
+            X_30m = cat(3,X_30m,GetLandsat8(dataFolder,['band' num2str(b)],varargin{:}));
         end
         %create output structure
         X = struct('OLI_30m',X_30m,'OLI_15m',X_15m);
@@ -146,9 +146,9 @@ end
 [pathstr,fileName,ext] = fileparts(filepath);
 if ~isempty(fileName)
     file = strcat(fileName,ext);
-    fileInfo = infoFromLandsatFilename_Collection1(file);
+    fileInfo = infoFromLandsatFilename(file);
 else
-    fileInfo = infoFromLandsatFilename_Collection1(pathstr);
+    fileInfo = infoFromLandsatFilename(pathstr);
 end
 filetype = fileInfo.filetype;
 sceneID = char(fileInfo.sceneID);

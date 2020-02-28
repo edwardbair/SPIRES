@@ -1,4 +1,4 @@
-function [ S ] = unpackLandsat8BQA_Collection1( LS8_BQA, datatype )
+function [ S ] = unpackLandsat8BQA( LS8_BQA, datatype )
 %[ S ] = unpackLandsat8BQA( LS8_BQA )
 %unpack the bit-packed Quality Assurance (QA) layer in Landsat 8
 % Operatioal Land Imager (OLI) files. 

@@ -1,4 +1,4 @@
-function [ fileTable] = infoFromLandsatFilename_Collection1( f )
+function [ fileTable] = infoFromLandsatFilename( f )
 % [ fileTable] = infoFromLandsatFilename( f )
 %
 %   Extract datenum, filetype, sensor id, and WRS-2 path/row from Landsat-like filenames
