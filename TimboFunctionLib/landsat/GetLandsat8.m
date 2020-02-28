@@ -81,8 +81,8 @@ switch lower(whichVariable)
         X = MTL_list.PRODUCT_METADATA.PANCHROMATIC_LINES .* ...
             MTL_list.PRODUCT_METADATA.PANCHROMATIC_SAMPLES;
     case lower('BQA')
-        BQAfile = fullfile(dataFolder,MTL_list.PRODUCT_METADATA.FILE_NAME_BAND_QUALITY);
-        LS8_BQA = geotiffread(BQAfile);
+%         BQAfile = fullfile(dataFolder,MTL_list.PRODUCT_METADATA.FILE_NAME_BAND_QUALITY);        
+LS8_BQA = geotiffread(filepath);
         if nargout>numOut
             varargout{1} = geotiffinfo(BQAfile);
         end

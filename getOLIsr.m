@@ -36,3 +36,11 @@ for i=1:length(d)
     end
     R.bands(:,:,i)=X;
 end
+d=dir(fullfile(ldir,'*pixel_qa*'));
+
+if ~isempty(d)
+    fname=fullfile(d.folder,d.name);
+    BQA=GetLandsat8(fname,'BQA');
+else
+   error('could not load qa data'); 
+end
