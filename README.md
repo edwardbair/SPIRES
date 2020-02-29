@@ -1,4 +1,4 @@
-# SCAGDWorking
+# SPIRES
 
 Spectral unmixing with SCAGD placeholder name. Does two sensors right now. Tested w/ MATLAB 2019b.
 
