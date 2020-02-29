@@ -6,8 +6,14 @@ function R=getOLIsr(ldir,target)
 %output R - struct with fields bands, RefMatrix, ProjectionStructure,and
 %RasterReference
 
+%collection 1 on demand surface reflectance
 d=dir(fullfile(ldir,'*band*.tif'));
-
+% collection 1 ard surface reflectance
+if isempty(d)
+    d=dir(fullfile(ldir,'*SRB*.tif'));
+else
+    error('cannot find surface refl files');
+end
 for i=1:length(d)
     fname=fullfile(d(i).folder,d(i).name);
     X=single(geotiffread(fname));
@@ -36,11 +42,25 @@ for i=1:length(d)
     end
     R.bands(:,:,i)=X;
 end
-d=dir(fullfile(ldir,'*pixel_qa*'));
 
-if ~isempty(d)
-    fname=fullfile(d.folder,d.name);
-    BQA=GetLandsat8(fname,'BQA');
+    d=dir(fullfile(ldir,'*pixel_qa.tif'));
+if isempty(d) % coll 1 ard
+    d=dir(fullfile(ldir,'*PIXELQA.tif'));
 else
    error('could not load qa data'); 
+end
+    fname=fullfile(d.folder,d.name);
+    X = geotiffread(fname);
+    R.QA = unpackLandsat8BQA(X,'collection1');
+    fn=fieldnames(R.QA);
+    if ~isempty(target)
+        for i=1:length(fn)
+            X=rasterReprojection(R.QA.(fn{i}),RefMatrix,...
+            ProjectionStructure,...
+            target.ProjectionStructure,'method','nearest','rasterref',...
+            target.RasterReference);
+            R.QA.(fn{i})=X;
+        end
+    end
+
 end

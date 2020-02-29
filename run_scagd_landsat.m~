@@ -84,8 +84,15 @@ nanmask=all(isnan(R0.bands),3);
 R=getOLIsr(rdir,hdr);
 
 %cloud mask
-NDSI=(R.bands(:,:,red_b)-R.bands(swir_b(:,:,swir_b))./(red_b+swir_b)
+NDSI=(R.bands(:,:,red_b)-R.bands(:,:,swir_b))./...
+    (R.bands(:,:,red_b)+R.bands(:,:,swir_b));
 
+notClouds = (R.bands(:,:,2) & R.bands(:,:,6) < 0.4 & R.bands(:,:,7) < 0.3) | ...
+    NDSI > 0.7;
+
+operationalCloudMask=R.QA.cloud;
+
+cloudMask = operationalCloudMask & ~notClouds;
 
 % load and reproject canopy data to hdr
 CC=load(CCfile);
@@ -97,7 +104,7 @@ cc=double(cc);
 t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
-o=run_scagd(t0,t,acosd(mu),Ffile,~smask | nanmask,...
+o=run_scagd(t0,t,acosd(mu),Ffile,~smask | nanmask | cloudMask,...
     fsca_thresh,pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b);
 
 % spatial interpolation

@@ -1,7 +1,7 @@
-function out=run_scagd_landsat(r0dir,rdir,topofile,...
+function out=run_spires_landsat(r0dir,rdir,topofile,...
     Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,...
     subset)
-%run scagd over for a landsat scene
+%run spires  for a landsat scene
 % r0date - date for background scene in yyyymmdd, e.g. 20180923
 % r0dir - R0 directory, must contain geotiff surface reflectances from USGS
 % rdate - date for snow scene in yyyymmdd, e.g. 20190131
@@ -84,10 +84,13 @@ nanmask=all(isnan(R0.bands),3);
 R=getOLIsr(rdir,hdr);
 
 %cloud mask
-NDSI=(R.bands(:,:,red_b)-R.bands(swir_b(:,:,swir_b)))./...
-    (R.bands(:,:,red_b)+R.bands(swir_b(:,:,swir_b)));
-notClouds = (R.bands(:,:,2) > 0.6 & R.bands(:,:,2) < 0.2 & ...
-    R.bands(:,:,7) < 0.2) | NDSI>0.7;
+NDSI=(R.bands(:,:,red_b)-R.bands(:,:,swir_b))./...
+    (R.bands(:,:,red_b)+R.bands(:,:,swir_b));
+
+notClouds = (R.bands(:,:,2) & R.bands(:,:,6) < 0.4 & R.bands(:,:,7) < 0.3) | ...
+    NDSI > 0.7;
+
+operationalCloudMask=R.QA.cloud;
 
 cloudMask = operationalCloudMask & ~notClouds;
 
@@ -101,7 +104,7 @@ cc=double(cc);
 t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
-o=run_scagd(t0,t,acosd(mu),Ffile,~smask | nanmask,...
+o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | cloudMask,...
     fsca_thresh,pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b);
 
 % spatial interpolation

@@ -2,7 +2,7 @@ function out=smooth_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
     R0,Ffile,pshade,dust_thresh,tolval,fsca_thresh,outloc,...
     grainradius_nPersist,el_cutoff,cc,fice)
 
-% smooths input (mod09ga) and runs scagd, then smooths again
+% smooths input (mod09ga) and runs spires, then smooths again
 %input:
 %tile - tilename, e.g. 'h08v05'
 %matdates - matdates for cube
@@ -50,7 +50,7 @@ for i=1:length(m)
     rundates=matdates(idx);
     [R,~,solarZ,~,weights]=...
     smoothMODIScube(tile,rundates,hdfdir,topofile,watermask);
-    out=run_scagd(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
+    out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
         dust_thresh,tolval,cc,hdr,red_b,swir_b);
     fname=fullfile(outloc,[tile datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
