@@ -1,6 +1,6 @@
 # SPIRES
 
-Spectral unmixing with SCAGD placeholder name. Does two sensors right now. Tested w/ MATLAB 2019b.
+Snow property inversion from remote sensing (SPIReS). Does two sensors right now. Tested w/ MATLAB 2019b.
 
 1) Clone this repository and add the base directory and all of its sub-directories to your MATLAB path.
 
