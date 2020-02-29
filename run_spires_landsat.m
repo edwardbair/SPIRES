@@ -1,5 +1,5 @@
 function out=run_spires_landsat(r0dir,rdir,topofile,...
-    Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,...
+    Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,cloudmask,...
     subset)
 %run spires  for a landsat scene
 % r0date - date for background scene in yyyymmdd, e.g. 20180923
@@ -17,6 +17,7 @@ function out=run_spires_landsat(r0dir,rdir,topofile,...
 % interpolated, e.g. 0.99, scalar
 % pshade - physical shade endmember, vector, bandsx1
 % CCfile - location of .mat
+% cloudmask - cloudmask, logical
 % canopy cover - canopy cover for pixels 0-1, size of scene
 % also need RefMatrix and ProjectionStructure
 % subset - either empty for none or [row1 row2;col1 col2], where are
@@ -54,7 +55,6 @@ h=GetHorizon(topofile,180-phi0);
 %in sun if solarZ > 10 deg, shaded if solarZ <= 10 deg
 smask= (90-acosd(mu))-h > 10;
 
-
 %if crop w/o reprojection
 if ~isempty(subset)
     rl=subset(1,1):subset(1,2);
@@ -83,17 +83,6 @@ nanmask=all(isnan(R0.bands),3);
 %snow-covered scene and reproject to hdr
 R=getOLIsr(rdir,hdr);
 
-%cloud mask
-NDSI=(R.bands(:,:,red_b)-R.bands(:,:,swir_b))./...
-    (R.bands(:,:,red_b)+R.bands(:,:,swir_b));
-
-notClouds = (R.bands(:,:,2) & R.bands(:,:,6) < 0.4 & R.bands(:,:,7) < 0.3) | ...
-    NDSI > 0.7;
-
-operationalCloudMask=R.QA.cloud;
-
-cloudMask = operationalCloudMask & ~notClouds;
-
 % load and reproject canopy data to hdr
 CC=load(CCfile);
 cc=rasterReprojection(CC.cc,CC.RefMatrix,CC.ProjectionStructure,...
@@ -104,7 +93,7 @@ cc=double(cc);
 t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
-o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | cloudMask,...
+o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | cloudmask,...
     fsca_thresh,pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b);
 
 % spatial interpolation

@@ -11,7 +11,8 @@ d=dir(fullfile(ldir,'*band*.tif'));
 % collection 1 ard surface reflectance
 if isempty(d)
     d=dir(fullfile(ldir,'*SRB*.tif'));
-else
+end
+if isempty(d)
     error('cannot find surface refl files');
 end
 for i=1:length(d)
@@ -43,24 +44,25 @@ for i=1:length(d)
     R.bands(:,:,i)=X;
 end
 
-    d=dir(fullfile(ldir,'*pixel_qa.tif'));
-if isempty(d) % coll 1 ard
-    d=dir(fullfile(ldir,'*PIXELQA.tif'));
-else
-   error('could not load qa data'); 
-end
-    fname=fullfile(d.folder,d.name);
-    X = geotiffread(fname);
-    R.QA = unpackLandsat8BQA(X,'collection1');
-    fn=fieldnames(R.QA);
-    if ~isempty(target)
-        for i=1:length(fn)
-            X=rasterReprojection(R.QA.(fn{i}),RefMatrix,...
-            ProjectionStructure,...
-            target.ProjectionStructure,'method','nearest','rasterref',...
-            target.RasterReference);
-            R.QA.(fn{i})=X;
-        end
-    end
+%     d=dir(fullfile(ldir,'*pixel_qa.tif'));
+% if isempty(d) % coll 1 ard
+%     d=dir(fullfile(ldir,'*PIXELQA.tif'));
+% end
+% if isempty(d)
+%    error('could not load qa data'); 
+% end
+%     fname=fullfile(d.folder,d.name);
+%     X = geotiffread(fname);
+%     R.QA = unpackLandsat8BQA(X,'collection1');
+%     fn=fieldnames(R.QA);
+%     if ~isempty(target)
+%         for i=1:length(fn)
+%             X=rasterReprojection(R.QA.(fn{i}),RefMatrix,...
+%             ProjectionStructure,...
+%             target.ProjectionStructure,'method','nearest','rasterref',...
+%             target.RasterReference);
+%             R.QA.(fn{i})=X;
+%         end
+%     end
 
 end
