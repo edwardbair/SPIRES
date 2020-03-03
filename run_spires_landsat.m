@@ -68,6 +68,7 @@ if ~isempty(subset)
     smask=smask(rl,cl);
     Slope=Slope(rl,cl);
     Aspect=Aspect(rl,cl);
+    cloudmask=cloudmask(rl,cl);
 end
 
 smask=~imfill(~smask,8,'holes'); %fill in errant holes

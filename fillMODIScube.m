@@ -1,6 +1,6 @@
-function [smoothedCube,refl,solarZ,cloudmask,pxweights]=...
-    smoothMODIScube(tile,matdates,hdfdir,topofile,watermask)
-%create time/space smoothed and gap filled (cloud-free) MOD09GA surface
+function [filledCube,refl,solarZ,cloudmask,pxweights]=...
+    fillMODIScube(tile,matdates,hdfdir,topofile,watermask)
+%create gap filled (e.g. cloud-free) MOD09GA surface
 %reflectance
 
 %input:
@@ -77,15 +77,13 @@ parfor i=1:length(matdates)
     end
 end
 
-smoothedCube=NaN(size(refl));
+filledCube=NaN(size(refl));
 wm=reshape(watermask,[sz(1)*sz(2) 1]);
 
 for i=1:size(refl,3) % for each band
     tic;
     bandcube=squeeze(refl(:,:,i,:));
     bandcube(cloudmask)=NaN; %set all the clouds to NaN
-    %weights=squeeze(bandweights(:,:,i,:));
-    %weights(isnan(bandcube))=0;
     %fill datacube
     vec=reshape(bandcube,[sz(1)*sz(2) sz(4)])'; %col major (days x pixels)
     parfor j=1:size(vec,2)
@@ -112,9 +110,7 @@ for i=1:size(refl,3) % for each band
             XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
         end
     end
-    smoothedCube(:,:,i,:)=XX;
-%     smoothedCube(:,:,i,:)=smoothDataCube(bandcube,weights,...
-%         'mask',~watermask,'method','smoothingspline');
+    filledCube(:,:,i,:)=XX;
     t2=toc;
-    fprintf('filled and smoothed band:%i in %g min\n',i,t2/60);
+    fprintf('filled band:%i in %g min\n',i,t2/60);
 end

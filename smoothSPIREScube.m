@@ -1,6 +1,6 @@
-function out=smoothSCAGDcube(tile,outloc,matdates,...
+function out=smoothSPIREScube(tile,outloc,matdates,...
     grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice)
-%function to smooth cube after running through SCAGD
+%function to smooth cube after running through SPIRES
 % tile - tile name, string e.g. 'h08v05'
 % outloc - output location, string
 % matdates - datenum vector for image days
