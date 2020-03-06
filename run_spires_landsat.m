@@ -1,6 +1,6 @@
 function out=run_spires_landsat(r0dir,rdir,topofile,...
     Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,cloudmask,...
-    subset)
+    fice,subset)
 %run spires  for a landsat scene
 % r0date - date for background scene in yyyymmdd, e.g. 20180923
 % r0dir - R0 directory, must contain geotiff surface reflectances from USGS
@@ -19,6 +19,7 @@ function out=run_spires_landsat(r0dir,rdir,topofile,...
 % CCfile - location of .mat
 % cloudmask - cloudmask, logical
 % canopy cover - canopy cover for pixels 0-1, size of scene
+% fice,ice fraction, size of cloudmask
 % also need RefMatrix and ProjectionStructure
 % subset - either empty for none or [row1 row2;col1 col2], where are
 % row1/col1 are the starting pixels and row2/col2 are the end pixels,
@@ -104,6 +105,7 @@ ifsca(~smask & ~nanmask)=NaN;
 ifsca=inpaint_nans(ifsca,4);
 
 ifsca=ifsca./(1-cc);
+ifsca=ifsca./(1-fice);
 ifsca(ifsca>1)=1;
 ifsca(ifsca<fsca_thresh)=0;
 ifsca(nanmask)=NaN;
