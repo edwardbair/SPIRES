@@ -18,10 +18,6 @@ ic=(cosd(solarZ).*cosd(slope)+sind(solarZ).*...
 
 c=cosd(solarZ)./ic;
 Rc=R.*c;
-%limit corrections
-
 
 %fix negative values
 Rc(Rc<0.001)=0.001;
-%fix values > 1
-Rc(Rc>=1)=0.999;
