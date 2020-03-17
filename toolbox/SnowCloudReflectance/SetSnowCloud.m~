@@ -199,11 +199,9 @@ if chooseDefaultP
         fscript.wetness = [];
     else
         fscript.wetness = 0;
-        fscript.waterConc = 0;
     end
     fscript.fractionalCoverage = [];
     fscript.temperature = 273.16;
-    
     
     % defaults -- dust and soot
     fscript.dust = [];
@@ -314,8 +312,8 @@ addParameter(p,validatestring('waterequivalent',{'waterequiv','waterequivalent',
     fscript.WE,@(x) isscalar(x) && x>0)
 addParameter(p,validatestring('weunit',{'weu','weunit'}),...
     fscript.weUnit,@ischar)
-addParameter(p,validatestring('waterConc',{'waterc','waterconc'}),...
-    fscript.waterConc,@(x) isscalar(x) && x<=1);
+addParameter(p,validatestring('waterConc',
+    fscript.waterConc,@(x) 
 addParameter(p,'r0',fscript.R0,r0Validation)
 addParameter(p,validatestring('temperature',{'tem','temp','temperature'}),...
     fscript.temperature,@(x) isscalar(x) && x>0)

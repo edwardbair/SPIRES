@@ -22,7 +22,7 @@ function plot_landsat(Rdir,out,subset)
         ax=gca;
         
         if j==1
-            xx=squeeze(R.bands(:,:,[3 2 1]));
+            xx=squeeze(R.bands(:,:,[4 3 2]));
         elseif j==2
             xx=out.fsca;
         elseif j==3

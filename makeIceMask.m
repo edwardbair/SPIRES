@@ -1,8 +1,8 @@
-function gfrac=makeIceMask(S,hdr,glims_res)
+function fice=makeIceMask(S,hdr,glims_res)
 % make a fractional image of glacier ice
 %input: S - output from shapread of GLIMS polygons w/ M and Z data removed
 % hdr - hdr geo info for target
-% glims_res - spatial resolution for rasterizing glims data, e.g. 30 m
+% glims_res - spatial resolution for rasterizing glims data, e.g. 100 m
 gmask=false(hdr.RasterReference.RasterSize);
 [gmaskBig,RefMatrixB,RasterReferenceB]=rasterReprojection(gmask,hdr.RefMatrix,hdr.ProjectionStructure,...
     hdr.ProjectionStructure,'PixelSize',[glims_res glims_res],'Method',...
@@ -30,7 +30,7 @@ for i=1:length(S)
     end
 end
 
-gfrac=rasterReprojection(single(gmaskBig),RefMatrixB,...
+fice=rasterReprojection(single(gmaskBig),RefMatrixB,...
     hdr.ProjectionStructure,hdr.ProjectionStructure,...
     'rasterref',hdr.RasterReference);
-gfrac(gfrac<0.01)=0;
+fice(fice<0.01)=0;

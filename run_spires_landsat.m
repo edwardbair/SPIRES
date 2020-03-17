@@ -134,5 +134,4 @@ out.hdr=hdr;
 
 et=toc(t1);
 fprintf('total elapsed time %4.2f min\n',et/60);
-
 end
