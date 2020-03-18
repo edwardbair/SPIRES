@@ -53,14 +53,15 @@ extrap = 'nearest';
 % 1st pass, calculate the interpolation functions
 if isempty(already) || ~already
     already = true;
-    m = matfile('IceIndexRefractionW84.mat');
+    %m = matfile('IceIndexRefractionW84.mat');
+    m=matfile('Warren1984IceRefractiveIndex.mat');
     wvice=m.wvice;
     ice=m.ice;
     m = matfile('WaterIndexRefractionH73.mat');
     wvwater=m.wvwater;
     water=m.water;
 %     [wvice,ice] = correctIceRefractive('ice_refractive_picard2016.mat',m.wvice,m.ice);
-     [wvwater,water] = correctWaterRefractive(m.wvwater,m.water);
+    [wvwater,water] = correctWaterRefractive(wvwater,water);
     logWice = log(wvice);
     logWwater = log(wvwater);
     % functions for pchip interpolation, with nearest neighbor extrapolation
