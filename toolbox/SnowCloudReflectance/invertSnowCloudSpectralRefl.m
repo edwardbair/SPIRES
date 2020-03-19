@@ -120,9 +120,9 @@ if istable(fscript.R0)
     else
         contam = 'dust';
     end
-    passWeight = 1;
-%     passWeight = spectralWeight(fscript.cosZ,fscript.wavelength,...
-%         fscript.waveUnit,R0.wavelength,R0.reflectance,contam);
+%     passWeight = 1;
+    passWeight = spectralWeight(fscript.cosZ,fscript.wavelength,...
+        fscript.waveUnit,R0.wavelength,R0.reflectance,contam);
 else
     passWeight = 1;
 end

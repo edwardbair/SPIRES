@@ -1,5 +1,5 @@
 function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,pshade,...
-    dust_thresh,dust,cc)
+    dust_thresh,dust,cc,wt)
 %stripped down inversion for speed
 % input: 
 %   R - Nx1 band reflectance as vector, center of bandpass
@@ -28,7 +28,6 @@ end
 options = optimoptions('fmincon','Display','none',...
     'Algorithm','sqp');
 %soptions=optimoptions('fmincon','Display','none');
-
 % make all inputs column vectors
 if ~iscolumn(R)
     R=R';
@@ -93,6 +92,6 @@ end
         end
         
         modelRefl=x(1).*modelRefl + x(2).*pshade + (1-x(1)-x(2)).*R0;
-        diffR = norm(R - modelRefl);        
+        diffR = norm(wt.*R - wt.*modelRefl);        
     end
 end

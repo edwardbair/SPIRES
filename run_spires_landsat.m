@@ -38,6 +38,10 @@ function out=run_spires_landsat(r0dir,rdir,topofile,...
 red_b=3;
 swir_b=6;
 
+sT=SensorTable('LandsatOLI');
+wl=sT.CentralWavelength;
+wl=wl(1:7);
+
 %do terrain first
 %need to account for shaded pixels
 
@@ -97,7 +101,7 @@ t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | cloudmask,...
-    fsca_thresh,pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b);
+    fsca_thresh,pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b,wl);
 
 % spatial interpolation
 ifsca=o.fsca;

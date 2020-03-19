@@ -15,6 +15,7 @@ solarZ=0:1:89;
 lTbl=zeros(length(radius),length(dust),...
     length(solarZ),length(bands));
 N=length(radius)*length(dust);
+wl=sT.CentralWavelength(bands);
 
 n=0;
 tic;

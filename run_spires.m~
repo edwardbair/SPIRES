@@ -51,8 +51,9 @@ X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
 cc=reshape(cc,[sz(1)*sz(2) 1]);
 
-%sweight = SolarScale(wl,'units','um','location','ratio');
-sweight=1;
+sweight = SolarScale(wl,'units','um','location','ratio');
+%sweight=ones(size(wl));
+
 for i=1:sz(4) %for each day
     thisR=squeeze(R(:,:,i));
     thissolarZ=squeeze(solarZ(:,i));
