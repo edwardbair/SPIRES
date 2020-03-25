@@ -111,7 +111,7 @@ end
 
 % solving method depends on input
 passWeight = 1;
-useParallel=true;
+useParallel=false;
 switch fscript.solutionMethod
     % inversion method lsqnonlin uses the signed differences between measurement and model
     case 'lsqnonlin'
