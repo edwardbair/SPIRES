@@ -18,10 +18,6 @@ function [ N, varargout] = RefractiveIndex( wave, substance, varargin )
 %   wavelengths - wavelengths from original database
 
 % DATA SOURCES
-% ice - Warren, Stephen G. Warren, "Optical constants of ice from the 
-% ultraviolet to the microwave," Appl. Opt. 23, 1206-1225 (1984),
-% doi:10.1364/AO.23.001206
-% or
 % ice - Warren, S.G., & Brandt, R.E. (2008). Optical constants of ice from
 % the ultraviolet to the microwave: A revised compilation. JGR, 113, D14220.
 % doi:10.1029/2007JD009744
@@ -55,12 +51,13 @@ if isempty(already) || ~already
     already = true;
     %m = matfile('IceIndexRefractionW84.mat');
     m=matfile('Warren1984IceRefractiveIndex.mat');
-    wvice=m.wvice;
-    ice=m.ice;
+%     wvice=m.wvice;
+%     ice=m.ice;
+    [wvice,ice] = correctIceRefractive('ice_refractive_picard2016.mat',...
+        m.wvice,m.ice);
     m = matfile('WaterIndexRefractionH73.mat');
     wvwater=m.wvwater;
     water=m.water;
-%     [wvice,ice] = correctIceRefractive('ice_refractive_picard2016.mat',m.wvice,m.ice);
     [wvwater,water] = correctWaterRefractive(wvwater,water);
     logWice = log(wvice);
     logWwater = log(wvwater);

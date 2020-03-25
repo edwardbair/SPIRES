@@ -20,4 +20,6 @@ c=cosd(solarZ)./ic;
 Rc=R.*c;
 
 %fix negative values
-Rc(Rc<0.001)=0.001;
+Rc(Rc<0)=0;
+% fix values > 1
+Rc(Rc>1)=1;
