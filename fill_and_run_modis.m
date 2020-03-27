@@ -4,11 +4,11 @@ function out=fill_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
 
 % fills input (mod09ga) and runs spires, then smooths 
 %input:
-%tile - tilename, e.g. 'h08v05'
-%matdates - matdates for cube
-%hdfdir - where the MOD09GA HDF files live for a certain tile, e.g. h08v04
-%topofile- h5 file name from consolidateTopography, part of TopoHorizons
-%watermask- logical mask w/ ones for water
+% tile - tilename, e.g. 'h08v05'
+% matdates - matdates for cube
+% hdfdir - where the MOD09GA HDF files live for a certain tile, e.g. h08v04
+% topofile- h5 file name from consolidateTopography, part of TopoHorizons
+% mask- logical mask w/ ones for pixels to exclude (like water)
 % R0 - background image (MxNxb). Recommend using time-spaced smoothed
 % cube from a month with minimum fsca and clouds, like August or September,
 % then taking minimum of reflectance for each band (b)
@@ -78,7 +78,7 @@ for i=1:length(m)
     fprintf('wrote %s \n',fname);
 end
 %refilter and smooth
-out=smoothSCAGDcube(tile,outloc,matdates,...
+out=smoothSPIREScube(tile,outloc,matdates,...
     grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice);
 
 %write out h5 cubes
