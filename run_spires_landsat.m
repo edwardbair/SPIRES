@@ -1,4 +1,4 @@
-function out=run_spires_landsat(r0dir,rdir,topofile,...
+function out=run_spires_landsat(r0dir,rdir,demfile,...
     Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,cloudmask,...
     fice,subset)
 %run spires  for a landsat scene
@@ -6,8 +6,10 @@ function out=run_spires_landsat(r0dir,rdir,topofile,...
 % r0dir - R0 directory, must contain geotiff surface reflectances from USGS
 % rdate - date for snow scene in yyyymmdd, e.g. 20190131
 % rdir - R directory
-% topofile - h5 file containing scene topgraphy, outut of
-% consolidate_topograpy
+% demfile - matfile containing dem in m in same projection as R&R0
+% must contain: Z, elevation in m;
+% then hdr struct with fields: RefMatrix, RasterReference, and
+% ProjectionStructure
 % Ffile - mat file containing F griddedInterpolant R=F(grain radius (um),...
 % dust (ppmw),solarZenith (degrees),bands (scalar))
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
@@ -47,36 +49,42 @@ t1=tic;
 
 [solarZ,phi0]=getOLIsolar(rdir);
 
-[Slope,hdr]=GetTopography(topofile,'slope');
-Aspect=GetTopography(topofile,'aspect');
+% [Slope,hdr]=GetTopography(topofile,'slope');
+% Aspect=GetTopography(topofile,'aspect');
+m=load(demfile);
 
-mu=sunslope(cosd(solarZ),180-phi0,Slope,Aspect);
-
-h=GetHorizon(topofile,180-phi0);
-%in sun if solarZ > 10 deg, shaded if solarZ <= 10 deg
-smask= (90-acosd(mu))-h > 10;
-
-%if crop w/o reprojection
 if ~isempty(subset)
+%if crop w/o reprojection
     rl=subset(1,1):subset(1,2);
     cl=subset(2,1):subset(2,2);
-    [x,y]=pixcenters(hdr.RefMatrix,hdr.RasterReference.RasterSize,'makegrid');
+    [x,y]=pixcenters(m.hdr.RefMatrix,m.hdr.RasterReference.RasterSize,'makegrid');
     x=x(rl,cl);
     y=y(rl,cl);
-    hdr.RefMatrix=makerefmat(x(1,1),y(1,1),x(1,2)-x(1,1),y(2,1)-y(1,1));
-    hdr.RasterReference=refmatToMapRasterReference(hdr.RefMatrix,size(x));
-    mu=mu(rl,cl);
-    smask=smask(rl,cl);
-    Slope=Slope(rl,cl);
-    Aspect=Aspect(rl,cl);
+    m.hdr.RefMatrix=makerefmat(x(1,1),y(1,1),x(1,2)-x(1,1),y(2,1)-y(1,1));
+    m.hdr.RasterReference=refmatToMapRasterReference(m.hdr.RefMatrix,size(x));
+    m.Z=m.Z(rl,cl);
+%     mu=mu(rl,cl);
+%     smask=smask(rl,cl);
+%     Slope=Slope(rl,cl);
+%     Aspect=Aspect(rl,cl);
     cloudmask=cloudmask(rl,cl);
     fice=fice(rl,cl);
 end
+    [Slope,Aspect] = SlopeAzmProjected(m.hdr.RefMatrix, ...
+    m.hdr.ProjectionStructure, m.Z);
+    [x,y]=pixcenters(m.hdr.RefMatrix,size(Slope),'makegrid');
+    [lat,lon]=minvtran(m.hdr.ProjectionStructure,x,y);
+    sinF=Horizons2Directions('earth',180-phi0,lat,lon,m.Z);
+    h=asind(sinF);
+    mu=sunslope(cosd(solarZ),180-phi0,Slope,Aspect);
+    % h=GetHorizon(topofile,180-phi0);
+    %in sun if solarZ > 10 deg, shaded if solarZ <= 10 deg
+    smask= (90-acosd(mu))-h > 10;
 
 smask=~imfill(~smask,8,'holes'); %fill in errant holes
 
 %get R0 refl and reproject to hdr
-R0=getOLIsr(r0dir,hdr);
+R0=getOLIsr(r0dir,m.hdr);
 
 nanmask=all(isnan(R0.bands),3);
 
@@ -84,12 +92,12 @@ nanmask=all(isnan(R0.bands),3);
 [solarZR0,phi0R0]=getOLIsolar(r0dir);
 
 %snow-covered scene and reproject to hdr
-R=getOLIsr(rdir,hdr);
+R=getOLIsr(rdir,m.hdr);
 
 % load and reproject canopy data to hdr
 CC=load(CCfile);
 cc=rasterReprojection(CC.cc,CC.RefMatrix,CC.ProjectionStructure,...
-    hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+    m.hdr.ProjectionStructure,'rasterref',m.hdr.RasterReference);
 cc(isnan(cc))=0;
 cc=double(cc);
 
@@ -97,40 +105,44 @@ t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | cloudmask,...
-    fsca_thresh,pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b);
+    fsca_thresh,pshade,dust_thresh,tolval,cc,m.hdr,red_b,swir_b);
 
 % spatial interpolation
 ifsca=o.fsca;
-ifsca(nanmask)=0;
-ifsca(~smask & ~nanmask)=NaN;
-ifsca=inpaint_nans(ifsca,4);
+% ifsca(nanmask)=0;
+% ifsca(~smask & ~nanmask)=NaN;
+% ifsca=inpaint_nans(ifsca,4);
 
 ifsca=ifsca./(1-cc);
 ifsca=ifsca./(1-fice);
 ifsca(ifsca>1)=1;
 ifsca(ifsca<fsca_thresh)=0;
-ifsca(nanmask)=NaN;
+% ifsca(nanmask)=NaN;
+% set pixels outside boundary, in cloudy mask, or in shade
+ifsca(nanmask | cloudmask | ~smask)=NaN;
 
 igrainradius=o.grainradius;
-igrainradius(nanmask)=0;
-igrainradius(~smask & ~nanmask)=NaN;
-igrainradius(igrainradius>1190)=NaN;
-igrainradius=inpaint_nans(igrainradius,4);
-igrainradius(ifsca==0)=NaN;
-igrainradius(nanmask)=NaN;
+igrainradius(isnan(ifsca) | ifsca==0)=NaN;
+% igrainradius(nanmask)=0;
+% igrainradius(~smask & ~nanmask)=NaN;
+% igrainradius(igrainradius>1190)=NaN;
+% igrainradius=inpaint_nans(igrainradius,4);
+% igrainradius(ifsca==0)=NaN;
+% igrainradius(nanmask)=NaN;
 
 idust=o.dust;
-idust(nanmask)=0;
-idust(~smask & ~nanmask)=NaN;
-idust=inpaint_nans(idust,4);
-idust(ifsca==0)=NaN;
-idust(nanmask)=NaN;
+idust(isnan(ifsca) | ifsca==0)=NaN;
+% idust(nanmask)=0;
+% idust(~smask & ~nanmask)=NaN;
+% idust=inpaint_nans(idust,4);
+% idust(ifsca==0)=NaN;
+% idust(nanmask)=NaN;
 
 out.fsca=ifsca;
 out.grainradius=igrainradius;
 out.dust=idust;
 out.shade=o.shade;
-out.hdr=hdr;
+out.hdr=m.hdr;
 
 et=toc(t1);
 fprintf('total elapsed time %4.2f min\n',et/60);
