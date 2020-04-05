@@ -17,6 +17,8 @@ function out=smoothSPIREScube(tile,outloc,matdates,...
 %fsca, grainradius, dust, and hdr (geographic info)
 
 %1.34 hr/yr for h08v05, 2017
+fprintf('reading %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
 for i=1:length(matdates)
     dv=datevec(matdates(i));
     fname=fullfile(outloc,[tile datestr(dv,'yyyymm') '.mat']);
@@ -57,6 +59,9 @@ for i=1:length(matdates)
     dust(:,:,i)=dust_t;
 end
 
+fprintf('finished reading %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
 [Z,hdr]=GetTopography(topofile,'elevation');
 Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
@@ -76,6 +81,10 @@ fsca(~gmask & ~(fsca==0))=NaN;
 newweights=weights;
 newweights(isnan(fsca))=0;
 %fill in and smooth NaNs
+
+fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
 fsca=smoothDataCube(fsca,newweights,'mask',~watermask,...
    'method','smoothingspline','SmoothingParam',0.02);
 %get some small fsca values from smoothing - set to zero
@@ -91,6 +100,12 @@ fsca(fsca>1)=1;
 %min value of fsca is fice
 t=fsca<fice;
 fsca(t)=fice(t);
+
+fprintf('finished smoothing fsca %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
+fprintf('smoothing grain radius %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
 
 %create mask of any fsca for interpolation
 anyfsca=any(fsca,3);
@@ -111,6 +126,9 @@ grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca,...
 
 grainradius(fsca==0 | isnan(fsca))=NaN;
 
+fprintf('finished smoothing grain radius %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
 %use a different approach
 %replace high values with NaN
 % parfor i=1:size(dust,3)
@@ -119,6 +137,10 @@ grainradius(fsca==0 | isnan(fsca))=NaN;
 %    xx(xx>v)=NaN;
 %    dust(:,:,i)=xx;
 % end
+
+fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
 %compute grain sizes differences
 dG=cat(3,zeros(size(grainradius,1,2)),diff(grainradius,1,3));
 %send logical cube for increasing grain sizes
@@ -129,11 +151,19 @@ dust=smoothDataCube(dust,newweights,'mask',anyfsca,...
     'endconditions','periodic');
 dust(fsca==0 | isnan(fsca))=NaN;
 
+fprintf('finished smoothing dust %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
+fprintf('writing cube %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
 out.matdates=matdates;
 out.hdr=hdr;
 out.fsca=fsca;
 out.grainradius=grainradius;
 out.dust=dust;
 
+fprintf('finished writing cube %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
 end
 

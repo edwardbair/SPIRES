@@ -1,14 +1,13 @@
 function out=fill_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
-    R0,Ffile,pshade,dust_thresh,tolval,fsca_thresh,outloc,...
-    grainradius_nPersist,el_cutoff,cc,fice)
+    R0,Ffile,pshade,dust_thresh,tolval,fsca_thresh,outloc,cc)
 
-% fills input (mod09ga) and runs spires, then smooths 
+% fills input (mod09ga) and runs spires
 %input:
 % tile - tilename, e.g. 'h08v05'
 % matdates - matdates for cube
 % hdfdir - where the MOD09GA HDF files live for a certain tile, e.g. h08v04
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
-% mask- logical mask w/ ones for pixels to exclude (like water)
+% watermask- logical mask w/ ones for pixels to exclude (like water)
 % R0 - background image (MxNxb). Recommend using time-spaced smoothed
 % cube from a month with minimum fsca and clouds, like August or September,
 % then taking minimum of reflectance for each band (b)
@@ -16,25 +15,23 @@ function out=fill_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
 % Ffile, location of griddedInterpolant object that produces 
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
-% pshade: (photometric) shade spectra (bx1); reflectances
+% pshade: (photometric) shade spectra (bx1); reflectances; or scalar
 % corresponding to bands
 % dust thresh: min value for dust retrievals, scalar e.g. 0.85
 % tol val: threshold for uniquetol spectra, higher runs faster, 0 runs all pixesl
 % scalar e.g. 0.05
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % outloc: path to write output
-% grainradius_nPersist: min # of consecutive days needed with normal 
-% grain sizes to be kept as snow, e.g. 7
-% el_cutoff, min elevation for snow, m - scalar, e.g. 1500
 % cc - static canopy cover, single or double, same size as watermask,
 % 0-1 for viewable gap fraction correction
-% fice - ice fraction, single or double 0-1
-%5.77 hr for h08v05 WY 2017 w/ 62 cores
+
+
 %output:
 %   out:
 %   fsca: MxNxd
 %   grainradius: MxNxd
 %   dust: MxNxd
+%also writes 1 month .mat files with those outputs
 
 red_b=3;
 swir_b=6;
@@ -76,29 +73,6 @@ for i=1:length(m)
     
     mfile.matdates=rundates;
     fprintf('wrote %s \n',fname);
-end
-%refilter and smooth
-out=smoothSPIREScube(tile,outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice);
-
-%write out h5 cubes
-fname=fullfile(outloc,[tile datestr(matdates(end),'yyyy') '.h5']);
-if exist(fname,'file')
-    delete(fname); 
-end
-fn={'fsca','grainradius','dust'};
-fntarget={'snow_fraction','grain_size','dust'};
-dtype={'uint8','uint16','uint16'};
-divisors=[100 1 10];
-
-for i=1:length(fn)   
-    member=fntarget{i};
-    Value=out.(fn{i});
-    dS.(member).divisor=divisors(i);
-    dS.(member).dataType=dtype{i};
-    dS.(member).maxVal=max(Value(:));
-    dS.(member).FillValue=intmax(dS.(member).dataType);
-    writeh5stcubes(fname,dS,out.hdr,out.matdates,member,Value);
 end
 t2=toc(t1);
 fprintf('completed in %5.2f hr\n',t2/60/60);
