@@ -1,6 +1,6 @@
 function make_modis_video(infiles,target,subset)
 %create reprojected MODIS video
-%infiles - cell, list of h5 files to read
+%infiles - cell, N*1 list of h5 files to read
 %output struct from smooth_and_run_modis
 %w fields:
 %fsca (canopy adj),
@@ -25,8 +25,7 @@ f1=figure('Position',[100 10 1500 750],'Color',[0.6 0.6 0.6]);
 ha=tight_subplot(1, 3, 0.01, 0.01, 0);
 set(ha,'NextPlot','replaceChildren');
 
-
-for ii=1:length(infiles)
+for ii=1:size(infiles,1)
     fname=infiles{ii};
     in=struct();
     for j=1:length(vars)
@@ -36,6 +35,10 @@ for ii=1:length(infiles)
             in.(vars{j})=GetEndmember(fname,vars{j});
         end
     end
+    
+    
+    
+    
     for i=1:length(in.matdates)
         for j=1:length(vars)
             x=rasterReprojection(in.(vars{j})(:,:,i),in.hdr.RefMatrix,...

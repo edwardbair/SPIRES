@@ -2,11 +2,25 @@ function fice=makeIceMask(S,hdr,glims_res)
 % make a fractional image of glacier ice
 %input: S - output from shapread of GLIMS polygons w/ M and Z data removed
 % hdr - hdr geo info for target
-% glims_res - spatial resolution for rasterizing glims data, e.g. 100 m
+% glims_res - multiple of pixel size for rasterizing glims, e.g. 5
 gmask=false(hdr.RasterReference.RasterSize);
-[gmaskBig,RefMatrixB,RasterReferenceB]=rasterReprojection(gmask,hdr.RefMatrix,hdr.ProjectionStructure,...
-    hdr.ProjectionStructure,'PixelSize',[glims_res glims_res],'Method',...
-    'nearest');
+%create a higher res mask with 5% larger extent to deal with edge problems
+
+
+pixelsize=[hdr.RasterReference.CellExtentInWorldX/glims_res, ...
+    hdr.RasterReference.CellExtentInWorldY/glims_res];
+
+%extend image 5 pixels to deal w/ edges when reprojected
+Xlimit=[hdr.RasterReference.XWorldLimits(1)-hdr.RasterReference.CellExtentInWorldX*5 ...
+        hdr.RasterReference.XWorldLimits(2)+hdr.RasterReference.CellExtentInWorldX*5];
+Ylimit=[hdr.RasterReference.YWorldLimits(1)-hdr.RasterReference.CellExtentInWorldY*5 ...
+        hdr.RasterReference.YWorldLimits(2)+hdr.RasterReference.CellExtentInWorldY*5];
+
+
+[gmaskBig,RefMatrixB,RasterReferenceB]=rasterReprojection(gmask,hdr.RefMatrix,...
+    hdr.ProjectionStructure,hdr.ProjectionStructure,'method','nearest','PixelSize',...
+    pixelsize,'XLimit',Xlimit,'YLimit',Ylimit);
+
 
 X=RasterReferenceB.XWorldLimits;
 Y=RasterReferenceB.YWorldLimits;
@@ -26,7 +40,7 @@ for i=1:length(S)
         [x,y]=mfwdtran(hdr.ProjectionStructure,yy,xx);
         [r,c]=map2pix(RefMatrixB,x,y);
         mask=poly2mask(c,r,size(gmaskBig,1),size(gmaskBig,2));
-        gmaskBig=gmaskBig | mask;
+        gmaskBig(mask)=true;
     end
 end
 
