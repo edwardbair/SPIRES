@@ -1,5 +1,6 @@
 function out=smoothSPIREScube(tile,outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice)
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice,...
+    endconditions)
 %function to smooth cube after running through SPIRES
 % tile - tile name, string e.g. 'h08v05'
 % outloc - output location, string
@@ -13,6 +14,9 @@ function out=smoothSPIREScube(tile,outloc,matdates,...
 % cc - static canopy cover, single or doube, same size as watermask,
 % 0-1 for viewable gap fraction correction
 % fice - fraction of ice/neve, single or double, 0-1, mxn
+% endconditions - string, end condition for splines for dust and grain size, 
+% e.g. 'estimate' or 'periodic', see slmset.m
+
 %output: struct out w/ fields
 %fsca, grainradius, dust, and hdr (geographic info)
 
@@ -121,7 +125,7 @@ dF=cat(3,zeros(size(fsca,1,2)),diff(fsca,1,3));
 fcube=dF<=0;
 grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca,...
     'method','slm','monotonic','increasing','fcube',fcube,'knots',-3,...
-    'endconditions','periodic');
+    'endconditions',endconditions);
 
 
 grainradius(fsca==0 | isnan(fsca))=NaN;
@@ -148,7 +152,7 @@ fcube=dG>=0;
 
 dust=smoothDataCube(dust,newweights,'mask',anyfsca,...
     'method','slm','monotonic','increasing','fcube',fcube,'knots',-3,...
-    'endconditions','periodic');
+    'endconditions',endconditions);
 dust(fsca==0 | isnan(fsca))=NaN;
 
 fprintf('finished smoothing dust %s...%s\n',datestr(matdates(1)),...

@@ -1,5 +1,5 @@
 function out=smoothSPIRES(tile,matdates,topofile,watermask,...
-    fsca_thresh,outloc,grainradius_nPersist,el_cutoff,cc,fice)
+    fsca_thresh,outloc,grainradius_nPersist,el_cutoff,cc,fice,endcondition)
 
 % smoothes SPIRES MODIS cubes 
 %input:
@@ -15,6 +15,8 @@ function out=smoothSPIRES(tile,matdates,topofile,watermask,...
 % cc - static canopy cover, single or double, same size as watermask,
 % 0-1 for viewable gap fraction correction
 % fice - ice fraction, single or double 0-1
+% endconditions - string, end condition for splines for dust and grain size, 
+% e.g. 'estimate' or 'periodic', see slmset.m
 
 %output:
 %   h5 cubes written out w/ variables
@@ -27,7 +29,8 @@ t1=tic;
 
 %filter and smooth
 out=smoothSPIREScube(tile,outloc,matdates,...
-    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice);
+    grainradius_nPersist,watermask,topofile,el_cutoff,fsca_thresh,cc,fice,...
+    endcondition);
 
 %write out h5 cubes
 fname=fullfile(outloc,[tile datestr(matdates(end),'yyyy') '.h5']);
