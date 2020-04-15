@@ -1,5 +1,5 @@
 function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
-    fsca_thresh,dust_thresh,pshade,outdir)
+    fsca_thresh,dust_thresh,pshade,outdir,subset)
 % call SPIRES Landsat in a loop
 %input:
 %basedir - base dir where L8 inputs live,
@@ -23,6 +23,12 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 % interpolated, e.g. 0.99, scalar
 % pshade - physical shade endmember, vector, bandsx1
 % outdir - where to write files out
+%subset - either empty for none or [row1 row2;col1 col2], where are
+% row1/col1 are the starting pixels and row2/col2 are the end pixels,
+% e.g. for MMSA on p42r34, % [3280 3460;3740 3920]
+%note subset is based of DEM, as L8 has different sized scenes for
+%different dates and everything is reprojected to match the dem
+%takes a while if not subsetting, e.g. p42r34 
 
 for i=1:length(Rlist)
     rdir=fullfile(basedir,'sr',Rlist{i});
@@ -36,7 +42,6 @@ for i=1:length(Rlist)
     CCfile=fullfile(basedir,'cc',fname);
     CloudMaskfile=fullfile(basedir,'cloudmask',fname);
     fIcefile=fullfile(basedir,'fice',fname);
-    subset=[500 600; 500 600];
     
     out=run_spires_landsat(r0dir,rdir,demfile,...
         Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,...
