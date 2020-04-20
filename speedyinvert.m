@@ -52,9 +52,9 @@ try
             lb=[0 cc 30 dust];
             ub=[1 1 1200 dust];
         else
-            x0=[0.5 0.1 250 dust];
+            x0=[0.5 1 250 dust];
             lb=[0 0 30 dust];
-            ub=[1 1 1200 dust];
+            ub=[1 0 1200 dust];
         end
         X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options); 
     else
@@ -64,17 +64,17 @@ try
         lb=[0 cc 30 0];
         ub=[1 1 1200 0];
     else
-        x0=[0.5 0.1 250 0]; %fsca, fshade,grain size (um), dust (ppm)
+        x0=[0.5 0 250 0]; %fsca, fshade,grain size (um), dust (ppm)
         lb=[0 0 30 0];
-        ub=[1 1 1200 0];
+        ub=[1 0 1200 0];
     end
         X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
         X(4)=NaN; %dust is NaN unless...
         %if fsca is above threshold, re-solve for shade & dust 
         if X(1) >= dust_thresh
-            x0=[0.5 0.1 250 0.1]; %fsca,fshade,grain size (um), dust (ppm)
+            x0=[0.5 0 250 0.1]; %fsca,fshade,grain size (um), dust (ppm)
             lb=[0 0 30 0];
-            ub=[1 1 1200 1000];
+            ub=[1 0 1200 1000];
             X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
         end
     end

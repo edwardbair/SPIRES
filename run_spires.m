@@ -63,7 +63,7 @@ for i=1:sz(4) %for each day
     YM=Y(t); % Y coordinates for M
     [c,im,~]=uniquetol(M,tolval,'ByRows',true,...
         'DataScale',1,'OutputAllIndices',true);
-    tic;
+    t1=tic;
     temp=zeros(size(c,1),4); %fsca,shade,grain radius,dust
     parfor j=1:size(c,1) %solve for unique (w/ tol) rows
         pxR=c(j,1:sz(3));
@@ -122,7 +122,7 @@ for i=1:sz(4) %for each day
     shade(t,i)=repxx(:,2);
     grainradius(t,i)=repxx(:,3);
     dust(t,i)=repxx(:,4);
-    t2=toc;
+    t2=toc(t1);
     fprintf('done w/ day %i in %g min\n',i,t2/60);
 end
 
