@@ -1,5 +1,5 @@
 function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
-    fsca_thresh,dust_thresh,pshade,outdir,subset)
+    fsca_thresh,dust_thresh,pshade,outdir,el_cutoff,subset)
 % call SPIRES Landsat in a loop
 %input:
 %basedir - base dir where L8 inputs live,
@@ -23,6 +23,7 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 % interpolated, e.g. 0.99, scalar
 % pshade - physical shade endmember, vector, bandsx1
 % outdir - where to write files out
+% el_cutoff - elevation cutoff, m
 %subset - either empty for none or [row1 row2;col1 col2], where are
 % row1/col1 are the starting pixels and row2/col2 are the end pixels,
 % e.g. for MMSA on p42r34, % [3280 3460;3740 3920]
@@ -40,15 +41,16 @@ for i=1:length(Rlist)
     demfile=fullfile(basedir,'dem',[pathrow,'_dem.mat']);
     fname=[pathrow,'.mat'];
     CCfile=fullfile(basedir,'cc',fname);
+    WaterMaskfile=fullfile(basedir,'watermask',fname);
     CloudMaskfile=fullfile(basedir,'cloudmask',fname);
     fIcefile=fullfile(basedir,'fice',fname);
     
     out=run_spires_landsat(r0dir,rdir,demfile,...
         Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,...
-        CloudMaskfile,fIcefile,subset);
+        WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset);
     
     fn=fieldnames(out);
-    outname=fullfile(outdir,fname);
+    outname=fullfile(outdir, [Rlist{i} '.mat']);
     m=matfile(outname,'Writable',true);
     
     for j=1:length(fn)

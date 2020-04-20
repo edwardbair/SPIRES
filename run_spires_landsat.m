@@ -1,5 +1,6 @@
 function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
-    fsca_thresh,dust_thresh,pshade,CCfile,CloudMaskfile,fIcefile,subset)
+    fsca_thresh,dust_thresh,pshade,CCfile,WaterMaskfile,CloudMaskfile,...
+    fIcefile,el_cutoff,subset)
 %run spires  for a landsat scene
 % r0date - date for background scene in yyyymmdd, e.g. 20180923
 % r0dir - R0 directory, must contain geotiff surface reflectances from USGS
@@ -17,12 +18,16 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
 % dust_thresh - minumum fsca value for dust detection, pixels below are
 % interpolated, e.g. 0.99, scalar
 % pshade - physical shade endmember, vector, bandsx1
+% watermask
 % CCfile - location of .mat
 % canopy cover - canopy cover for pixels 0-1, size of scene
-%CloudMask - cloud mask file location, contains cloudmask, logical,
+% WaterMaskfile - water mask file location, contains watermask, logical
+% 0 is no water, 1 is water
+% CloudMaskfile - cloud mask file location, contains cloudmask, logical,
 % 0 is no cloud, 1 is cloud
 % fIcefile, fice file location, ice fraction 0-1, single, size of cloudmask
 % also need RefMatrix and ProjectionStructure
+% el_cutoff - elevation cutoff, m
 % subset - either empty for none or [row1 row2;col1 col2], where are
 % row1/col1 are the starting pixels and row2/col2 are the end pixels,
 % e.g. for MMSA on p42r34, % [3280 3460;3740 3920]
@@ -87,7 +92,7 @@ R=getOLIsr(rdir,dem.hdr);
 
 %load adjustment files
 % adjust_files={'CloudMaskfile','fIcefile','CCfile'};
-adjust_vars={'cloudmask','fice','cc'};
+adjust_vars={'cloudmask','fice','cc','watermask'};
 
 for i=1:length(adjust_vars)
 if i==1
@@ -96,6 +101,8 @@ elseif i==2
     in=load(fIcefile);
 elseif i==3
     in=load(CCfile);
+elseif i==4
+    in=load(WaterMaskfile);
 end
 A.(adjust_vars{i})=rasterReprojection(double(in.(adjust_vars{i})),...
     in.hdr.RefMatrix,in.hdr.ProjectionStructure,...
@@ -110,24 +117,29 @@ t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 
-o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | A.cloudmask,...
-    fsca_thresh,pshade,dust_thresh,tolval,A.cc,dem.hdr,red_b,swir_b);
+o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | A.cloudmask | ...
+    A.watermask,fsca_thresh,pshade,dust_thresh,tolval,A.cc,dem.hdr,red_b,...
+    swir_b);
 
 % spatial interpolation
-ifsca=o.fsca;
+ifsca=single(o.fsca);
 
 ifsca=ifsca./(1-A.cc);
 ifsca=ifsca./(1-A.fice);
 ifsca(ifsca>1)=1;
 ifsca(ifsca<fsca_thresh)=0;
 
+%elevation cutoff
+el_mask=dem.Z<el_cutoff;
+ifsca(el_mask)=0;
+
 % set pixels outside boundary, in cloudy mask, or in shade
 ifsca(nanmask | A.cloudmask | ~smask)=NaN;
 
-igrainradius=o.grainradius;
+igrainradius=single(o.grainradius);
 igrainradius(isnan(ifsca) | ifsca==0)=NaN;
 
-idust=o.dust;
+idust=single(o.dust);
 idust(isnan(ifsca) | ifsca==0)=NaN;
 
 out.fsca=ifsca;
