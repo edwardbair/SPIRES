@@ -1,5 +1,5 @@
 function out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
-    pshade,dust_thresh,tolval,cc,hdr,red_b,swir_b)
+    pshade,dustmask,tolval,cc,hdr,red_b,swir_b)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -14,8 +14,8 @@ function out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
 % band # (not necessarily in order of wavelength)
 % watermask: logical mask (MxN), true for water
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
-% pshade: shade spectra (bx1) or photometric scalar, e.g. 0.15
-% dust_tresh: threshold cutoff to return dust values, e.g. 0.95
+% pshade: shade spectra (bx1) or photometric scalar, e.g. 0
+% dustmask: make where dust values can be retrieved, 0-1
 % tolval: unique row tolerance value, i.e. 0.05 - bigger number goes faster
 % as more pixels are grouped together
 % cc - canopy cover (MxN), 0-1. No NaNs
@@ -49,6 +49,7 @@ shade=zeros(size(fsca));
 X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
 cc=reshape(cc,[sz(1)*sz(2) 1]);
+dm=reshape(dustmask,[sz(1)*sz(2) 1]);
 
 for i=1:sz(4) %for each day
     thisR=squeeze(R(:,:,i));
@@ -57,7 +58,15 @@ for i=1:sz(4) %for each day
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
         (thisR(:,red_b)+thisR(:,swir_b));
     t=NDSI > 0  & ~watermask & ~isnan(thissolarZ);
-    M=[round(thisR,2) round(R0,2) round(thissolarZ) round(cc,2)];
+    M=[round(thisR,2) round(R0,2) round(thissolarZ) round(cc,2) dm];
+    
+    %keep track of indices
+    Rind=1:sz(3);
+    R0ind=(Rind(end)+1):(Rind(end)+sz(3));
+    sZind=R0ind(end)+1;
+    ccind=sZind(end)+1;
+    dmind=ccind(end)+1;
+    
     M=M(t,:); % only values w/ > 0 NDSI and no water
     XM=X(t); % X coordinates for M
     YM=Y(t); % Y coordinates for M
@@ -65,13 +74,19 @@ for i=1:sz(4) %for each day
         'DataScale',1,'OutputAllIndices',true);
     t1=tic;
     temp=zeros(size(c,1),4); %fsca,shade,grain radius,dust
+    
+    
     parfor j=1:size(c,1) %solve for unique (w/ tol) rows
-        pxR=c(j,1:sz(3));
-        pxR0=c(j,sz(3)+1:end-2);
-        sZ=c(j,end-1);
-        thiscc=c(j,end);
-        o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,[],thiscc);
+        pxR=c(j,Rind);
+        pxR0=c(j,R0ind);
+        sZ=c(j,sZind);
+        thiscc=c(j,ccind);
+        thisdm=c(j,dmind);
+        o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,thisdm,[],thiscc);
         sol=o.x; %fsca,shade,grain radius,dust
+        if sol(1) < 0.75 %set dust to NaN for low fsca_raw
+           sol(4)=NaN;  
+        end
         sol(1)=sol(1)/(1-sol(2));%normalize by fshade
         temp(j,:)=sol;
     end
@@ -84,17 +99,18 @@ for i=1:sz(4) %for each day
         parfor j=1:size(c,1) 
             if isnan(temp(j,4)) % if there's no dust value, re-solve using
                 %interpolated dust 
-                pxR=c(j,1:sz(3));
-                pxR0=c(j,sz(3)+1:end-2);
-                sZ=c(j,end-1);
-                thiscc=c(j,end);
+                pxR=c(j,Rind);
+                pxR0=c(j,R0ind);
+                sZ=c(j,sZind);
+                thiscc=c(j,ccind);
+                thisdm=c(j,dmind);
                 idx=im{j}(1); %index to row of M correspnding to c
                 dist=pdist2([XM(tt),YM(tt)],[XM(idx),YM(idx)]);
                 %inverse distance weighted average
                 w=1./dist;
                 D=(sum(w.*sdust))./(sum(w));
                 if D >= 0.1 %if snow is dirty
-                    o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,dust_thresh,D,...
+                    o=speedyinvert(pxR,pxR0,sZ,Ffile,pshade,thisdm,D,...
                         thiscc);
                     sol=o.x; %fsca,shade,grain radius,dust
                     sol(1)=sol(1)/(1-sol(2));%normalize by fshade

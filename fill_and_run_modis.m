@@ -1,5 +1,5 @@
 function out=fill_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
-    R0,Ffile,pshade,dust_thresh,tolval,fsca_thresh,outloc,cc)
+    R0,Ffile,pshade,dustmask,tolval,fsca_thresh,outloc,cc)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -17,7 +17,8 @@ function out=fill_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
 % pshade: (photometric) shade spectra (bx1); reflectances; or scalar
 % corresponding to bands
-% dust thresh: min value for dust retrievals, scalar e.g. 0.85
+% dustmask: mask of loctations (MxN) where dust can be retireved (1) or not
+% (0)
 % tol val: threshold for uniquetol spectra, higher runs faster, 0 runs all pixesl
 % scalar e.g. 0.05
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
@@ -48,7 +49,7 @@ for i=1:length(m)
     [R,~,solarZ,~,weights]=...
     fillMODIScube(tile,rundates,hdfdir,topofile,watermask);
     out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
-        dust_thresh,tolval,cc,hdr,red_b,swir_b);
+        dustmask,tolval,cc,hdr,red_b,swir_b);
     fname=fullfile(outloc,[tile datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
     %fsca

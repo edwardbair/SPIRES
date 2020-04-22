@@ -1,5 +1,5 @@
 function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
-    fsca_thresh,dust_thresh,pshade,CCfile,WaterMaskfile,CloudMaskfile,...
+    fsca_thresh,DustMaskfile,pshade,CCfile,WaterMaskfile,CloudMaskfile,...
     fIcefile,el_cutoff,subset)
 
 %run spires  for a landsat scene
@@ -16,8 +16,8 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.15, scalar
-% dust_thresh - minumum fsca value for dust detection, pixels below are
-% interpolated, e.g. 0.99, scalar
+% DustMaskfile - dust mask file location, locations where dust can be
+% estimated
 % pshade - physical shade endmember, vector, bandsx1
 % watermask
 % CCfile - location of .mat
@@ -97,25 +97,50 @@ nanmask=all(isnan(R0.bands),3);
 R=getOLIsr(rdir,dem.hdr);
 
 %load adjustment files
-% adjust_files={'CloudMaskfile','fIcefile','CCfile'};
-adjust_vars={'cloudmask','fice','cc','watermask'};
+
+adjust_vars={'cloudmask','fice','cc','watermask','dustmask'};
+
+%default vals
+
 
 for i=1:length(adjust_vars)
 if i==1
-    in=load(CloudMaskfile);  
+    m=matfile(CloudMaskfile);  
 elseif i==2
-    in=load(fIcefile);
+    m=matfile(fIcefile);
 elseif i==3
-    in=load(CCfile);
+    m=matfile(CCfile);
 elseif i==4
-    in=load(WaterMaskfile);
+    m=matfile(WaterMaskfile);
+elseif i==5
+    m=matfile(DustMaskfile);
 end
-A.(adjust_vars{i})=rasterReprojection(double(in.(adjust_vars{i})),...
-    in.hdr.RefMatrix,in.hdr.ProjectionStructure,...
-    dem.hdr.ProjectionStructure,'rasterref',...
-    dem.hdr.RasterReference);
-t=isnan(A.(adjust_vars{i}));
-A.(adjust_vars{i})(t)=0;
+
+if ~isempty(regexp(adjust_vars{i},'.*mask.*','ONCE'))
+    method='nearest';
+    logicalflag=true;
+else
+    method='linear';
+    logicalflag=false;
+end
+   
+thdr=m.hdr;
+% reproject if RefMatrices don't match
+    if  any(dem.hdr.RefMatrix(:)~=thdr.RefMatrix(:))
+        A.(adjust_vars{i})=rasterReprojection(m.(adjust_vars{i}),...
+        thdr.RefMatrix,thdr.ProjectionStructure,...
+        dem.hdr.ProjectionStructure,'rasterref',...
+        dem.hdr.RasterReference,'Method',method);
+    else
+        A.(adjust_vars{i})=m.(adjust_vars{i});
+    end
+    if ~logicalflag
+        A.(adjust_vars{i})=double(A.(adjust_vars{i}));
+        t=isnan(A.(adjust_vars{i}));
+        A.(adjust_vars{i})(t)=0;
+    else
+        A.(adjust_vars{i})=logical(A.(adjust_vars{i}));
+    end
 end
 
 %normalizeReflectance
@@ -124,7 +149,7 @@ t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 
 o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | A.cloudmask | ...
-    A.watermask,fsca_thresh,pshade,dust_thresh,tolval,A.cc,dem.hdr,red_b,...
+    A.watermask,fsca_thresh,pshade,A.dustmask,tolval,A.cc,dem.hdr,red_b,...
     swir_b);
 
 % spatial interpolation

@@ -1,33 +1,31 @@
 function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,pshade,...
-    dust_thresh,dust,cc)
+    dustmask,dust,cc)
 %stripped down inversion for speed
-% input: 
+% input:
 %   R - Nx1 band reflectance as vector, center of bandpass
 %   R0 - Nx1 band background reflectance
 %   solarZ - solar zenith angle for flat surface, deg, scalar
-%   Ffile, location of griddedInterpolant with 4 inputs: radius (um), 
-% dust (ppm), solarZ (deg), 
+%   Ffile, location of griddedInterpolant with 4 inputs: radius (um),
+% dust (ppm), solarZ (deg),
 %   and band for a specific sensor, e.g. LandSat 8 OLI or MODIS
 %   pshade:  shade spectra (bx1)
-%   dust_thresh - threshhold value for dust retrievals, e.g. 0.85
+%   dustmask - only retrieve dust values where this is true
 % dust -dust val (ppmw), [] if needs to be solved for
 % cc - cc val
 % output:
 %   out: fsca, fshade, grain radius (um), and dust conc (ppm)
 persistent F
 if isempty(F)
-   X=load(Ffile);
-   F=X.F;
+    X=load(Ffile);
+    F=X.F;
 end
 
 ccflag=true;
 if cc==0
     ccflag=false;
-end 
+end
 
-options = optimoptions('fmincon','Display','none',...
-    'Algorithm','sqp');
-%options=optimoptions('fmincon','Display','none');
+options = optimoptions('fmincon','Display','none','Algorithm','sqp');
 
 % make all inputs column vectors
 if ~iscolumn(R)
@@ -44,44 +42,40 @@ out.x=NaN(4,1);
 
 A=[1 1 0 0];
 b=1;
-   
+
+%full dirty snow (dustmask) values
+%fsca, fshade,grain size (um), dust (ppm)
+fsca0=0.5;
+fsca_range=[0 1];
+fshade0=0.1;
+fshade_range=[0 1];
+r0=250;
+r_range=[30 1200];
+d0=10;
+d_range=[0 1000];
+
 try
-    if ~isempty(dust)
-        if ccflag
-            x0=[0.5 cc 250 dust];
-            lb=[0 cc 30 dust];
-            ub=[1 1 1200 dust];
-        else
-            x0=[0.5 1 250 dust];
-            lb=[0 0 30 dust];
-            ub=[1 0 1200 dust];
-        end
-        X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options); 
-    else
-    %try a clean snow solution
-    if ccflag
-        x0=[0.5 cc 250 0]; %fsca, fshade,grain size (um), dust (ppm)
-        lb=[0 cc 30 0];
-        ub=[1 1 1200 0];
-    else
-        x0=[0.5 0 250 0]; %fsca, fshade,grain size (um), dust (ppm)
-        lb=[0 0 30 0];
-        ub=[1 0 1200 0];
+    if ccflag %if there's canopy cover, set shade guess to cc
+%         fshade0=cc;
+%         fshade_range=[cc 1];
+    end    
+    if ~isempty(dust) %if dust values are provided, set them
+        d0=dust;
+        d_range=[dust dust];
+    elseif ~dustmask %clean snow solution
+        d0=0;
+        d_range=[0 0];
     end
-        X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
-        X(4)=NaN; %dust is NaN unless...
-        %if fsca is above threshold, re-solve for shade & dust 
-        if X(1) >= dust_thresh
-            x0=[0.5 0 250 0.1]; %fsca,fshade,grain size (um), dust (ppm)
-            lb=[0 0 30 0];
-            ub=[1 0 1200 1000];
-            X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
-        end
-    end
+    
+    x0=[fsca0 fshade0 r0 d0];
+    lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
+    ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
+    X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
+    
     out.x=X;
 catch ME
-
-      warning([ME.message,' solver crashed, skipping']);
+    
+    warning([ME.message,' solver crashed, skipping']);
 end
 
     function diffR = SnowCloudDiff(x)
@@ -93,6 +87,6 @@ end
         end
         
         modelRefl=x(1).*modelRefl + x(2).*pshade + (1-x(1)-x(2)).*R0;
-        diffR = norm(R - modelRefl);        
+        diffR = norm(R - modelRefl);
     end
 end

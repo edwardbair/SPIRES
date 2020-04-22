@@ -1,5 +1,5 @@
 function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
-    fsca_thresh,dust_thresh,pshade,outdir,el_cutoff,subset)
+    fsca_thresh,pshade,outdir,el_cutoff,subset)
 % call SPIRES Landsat in a loop
 %input:
 %basedir - base dir where L8 inputs live,
@@ -19,8 +19,6 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.15, scalar
-% dust_thresh - minumum fsca value for dust detection, pixels below are
-% interpolated, e.g. 0.99, scalar
 % pshade - physical shade endmember, vector, bandsx1
 % outdir - where to write files out
 % el_cutoff - elevation cutoff, m
@@ -31,7 +29,7 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 %different dates and everything is reprojected to match the dem
 %takes a while if not subsetting, e.g. p42r34 
 
-for i=1:length(Rlist)
+for i=3:length(Rlist)
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});
     [~,fpart]=fileparts(rdir);
@@ -43,10 +41,11 @@ for i=1:length(Rlist)
     CCfile=fullfile(basedir,'cc',fname);
     WaterMaskfile=fullfile(basedir,'watermask',fname);
     CloudMaskfile=fullfile(basedir,'cloudmask',fname);
+    DustMaskfile=fullfile(basedir,'dustmask',fname);
     fIcefile=fullfile(basedir,'fice',fname);
     
     out=run_spires_landsat(r0dir,rdir,demfile,...
-        Ffile,tolval,fsca_thresh,dust_thresh,pshade,CCfile,...
+        Ffile,tolval,fsca_thresh,DustMaskfile,pshade,CCfile,...
         WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset);
     
     fn=fieldnames(out);

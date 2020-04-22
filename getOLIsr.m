@@ -30,8 +30,9 @@ for i=1:length(d)
         else
             R.bands=zeros([size(X(:,:,1)) length(d)]);
         end
-    end    
-    if ~isempty(target)
+    end
+    % reproject if RefMatrices don't match
+    if ~isempty(target) || any(RefMatrix(:)~=target.RefMatrix(:))
        [X,R.RefMatrix,R.RasterReference]=rasterReprojection(X,RefMatrix,...
             ProjectionStructure,target.ProjectionStructure,'rasterref',...
             target.RasterReference);
@@ -44,25 +45,5 @@ for i=1:length(d)
     R.bands(:,:,i)=X;
 end
 
-%     d=dir(fullfile(ldir,'*pixel_qa.tif'));
-% if isempty(d) % coll 1 ard
-%     d=dir(fullfile(ldir,'*PIXELQA.tif'));
-% end
-% if isempty(d)
-%    error('could not load qa data'); 
-% end
-%     fname=fullfile(d.folder,d.name);
-%     X = geotiffread(fname);
-%     R.QA = unpackLandsat8BQA(X,'collection1');
-%     fn=fieldnames(R.QA);
-%     if ~isempty(target)
-%         for i=1:length(fn)
-%             X=rasterReprojection(R.QA.(fn{i}),RefMatrix,...
-%             ProjectionStructure,...
-%             target.ProjectionStructure,'method','nearest','rasterref',...
-%             target.RasterReference);
-%             R.QA.(fn{i})=X;
-%         end
-%     end
 
 end

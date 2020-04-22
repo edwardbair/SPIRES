@@ -30,7 +30,7 @@ refl=NaN(sz);
 solarZ=NaN([sz(1) sz(2) sz(4)]);
 cloudmask=false([sz(1) sz(2) sz(4)]);
 pxweights=zeros([sz(1) sz(2) sz(4)]);
-bandweights=zeros(sz);
+% bandweights=zeros(sz);
 
 % mask as cloud if swir band (6) is > than
 swir_cloud_thresh=0.2;
@@ -43,9 +43,9 @@ parfor i=1:length(matdates)
         f=fullfile(hdfdir,d{m});
         %get all band reflectance
         R=GetMOD09GA(f,'allbands'); 
-        [~,aWeights,bWeights] = weightMOD09(f,topofile);
+        [~,aWeights,~] = weightMOD09(f,topofile);
         pxweights(:,:,i)=aWeights;
-        bandweights(:,:,:,i)=bWeights{1};
+%         bandweights(:,:,:,i)=bWeights{1};
         
         x=single(GetMOD09GA(f,'SolarZenith'));
         if any(isnan(x(:)))
@@ -104,10 +104,12 @@ for i=1:size(refl,3) % for each band
         end
     end
     XX=reshape(vec',[sz(1) sz(2) sz(4)]);
+%     t=isnan(XX);
+%     XX(t)=0; %set all remaining NaNs to zero
     parfor j=1:size(XX,3)
         if any(isnan(XX(:,:,j)) & ~watermask,'all') %fill any remaining NaNs 
             %that could  not be temporally interpolated spatially
-            XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
+             XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
         end
     end
     filledCube(:,:,i,:)=XX;
