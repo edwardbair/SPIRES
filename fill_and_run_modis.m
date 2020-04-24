@@ -1,5 +1,5 @@
 function out=fill_and_run_modis(tile,matdates,hdfdir,topofile,watermask,...
-    R0,Ffile,pshade,dustmask,tolval,fsca_thresh,outloc,cc)
+    R0,Ffile,pshade,dustmask,tolval,fsca_thresh,outloc)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -49,7 +49,7 @@ for i=1:length(m)
     [R,~,solarZ,~,weights]=...
     fillMODIScube(tile,rundates,hdfdir,topofile,watermask);
     out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,pshade,...
-        dustmask,tolval,cc,hdr,red_b,swir_b);
+        dustmask,tolval,hdr,red_b,swir_b);
     fname=fullfile(outloc,[tile datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
     %fsca
@@ -57,6 +57,7 @@ for i=1:length(m)
     out.fsca=uint8(out.fsca*100);
     out.fsca(t)=intmax('uint8'); % 255 is NaN
     mfile.fsca=out.fsca;
+    %fshade (not written to m file)    
     %grain radius
     out.grainradius=uint16(out.grainradius);
     t=t | out.fsca==0;

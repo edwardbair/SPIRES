@@ -31,16 +31,19 @@ for i=1:length(d)
             R.bands=zeros([size(X(:,:,1)) length(d)]);
         end
     end
-    % reproject if RefMatrices don't match
-    if ~isempty(target) || any(RefMatrix(:)~=target.RefMatrix(:))
-       [X,R.RefMatrix,R.RasterReference]=rasterReprojection(X,RefMatrix,...
-            ProjectionStructure,target.ProjectionStructure,'rasterref',...
-            target.RasterReference);
-        R.ProjectionStructure=target.ProjectionStructure;
-    else
-        R.RefMatrix=RefMatrix;
-        R.RasterReference=RasterReference;
-        R.ProjectionStructure=ProjectionStructure;
+    
+    if ~isempty(target)
+        if any(RefMatrix(:)~=target.RefMatrix(:))
+            % reproject if RefMatrices don't match
+            [X,R.RefMatrix,R.RasterReference]=rasterReprojection(X,RefMatrix,...
+                ProjectionStructure,target.ProjectionStructure,'rasterref',...
+                target.RasterReference);
+            R.ProjectionStructure=target.ProjectionStructure;
+        else
+            R.RefMatrix=RefMatrix;
+            R.RasterReference=RasterReference;
+            R.ProjectionStructure=ProjectionStructure;
+        end
     end
     R.bands(:,:,i)=X;
 end

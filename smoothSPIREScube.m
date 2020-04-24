@@ -42,6 +42,7 @@ for i=1:length(matdates)
     t=fsca_t==intmax('uint8');
     fsca_t(t)=NaN;
     fsca_t=fsca_t/100;
+
     %weights    
     weights_t=single(m.weights(:,:,ind));
     t=weights_t==intmax('uint8');

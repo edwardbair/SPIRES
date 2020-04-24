@@ -1,5 +1,5 @@
 function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,pshade,...
-    dustmask,dust,cc)
+    dustmask,dust,r)
 %stripped down inversion for speed
 % input:
 %   R - Nx1 band reflectance as vector, center of bandpass
@@ -9,20 +9,15 @@ function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,pshade,...
 % dust (ppm), solarZ (deg),
 %   and band for a specific sensor, e.g. LandSat 8 OLI or MODIS
 %   pshade:  shade spectra (bx1)
-%   dustmask - only retrieve dust values where this is true
-% dust -dust val (ppmw), [] if needs to be solved for
-% cc - cc val
+%   dustmask - only retrieve dust/grain radius values where this is true
+%   dust - dust val (ppmw), [] if needs to be solved for
+%   r - grain size val (um), [] if needs to be solved for
 % output:
 %   out: fsca, fshade, grain radius (um), and dust conc (ppm)
 persistent F
 if isempty(F)
     X=load(Ffile);
     F=X.F;
-end
-
-ccflag=true;
-if cc==0
-    ccflag=false;
 end
 
 options = optimoptions('fmincon','Display','none','Algorithm','sqp');
@@ -47,31 +42,32 @@ b=1;
 %fsca, fshade,grain size (um), dust (ppm)
 fsca0=0.5;
 fsca_range=[0 1];
-fshade0=0.1;
-fshade_range=[0 1];
+fshade0=0;
+fshade_range=[0 0];
 r0=250;
 r_range=[30 1200];
 d0=10;
 d_range=[0 1000];
 
+if ~dustmask %clean snow solution
+   d0=0;
+   d_range=[0 0];
+end
+if ~isempty(dust) %if dust values are provided, set them
+    d0=dust;
+    d_range=[dust dust];
+end
+if ~isempty(r) %same for grain size
+   r0=r;
+   r_range=[r r];
+end
+
+x0=[fsca0 fshade0 r0 d0];
+lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
+ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
+
 try
-    if ccflag %if there's canopy cover, set shade guess to cc
-%         fshade0=cc;
-%         fshade_range=[cc 1];
-    end    
-    if ~isempty(dust) %if dust values are provided, set them
-        d0=dust;
-        d_range=[dust dust];
-    elseif ~dustmask %clean snow solution
-        d0=0;
-        d_range=[0 0];
-    end
-    
-    x0=[fsca0 fshade0 r0 d0];
-    lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
-    ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
     X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
-    
     out.x=X;
 catch ME
     

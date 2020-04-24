@@ -147,14 +147,11 @@ end
 t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
-
 o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | A.cloudmask | ...
-    A.watermask,fsca_thresh,pshade,A.dustmask,tolval,A.cc,dem.hdr,red_b,...
+    A.watermask,fsca_thresh,pshade,A.dustmask,tolval,dem.hdr,red_b,...
     swir_b);
 
-% spatial interpolation
 ifsca=single(o.fsca);
-
 ifsca=ifsca./(1-A.cc);
 ifsca=ifsca./(1-A.fice);
 ifsca(ifsca>1)=1;
@@ -174,9 +171,9 @@ idust=single(o.dust);
 idust(isnan(ifsca) | ifsca==0)=NaN;
 
 out.fsca=ifsca;
+out.fshade=o.fshade;
 out.grainradius=igrainradius;
 out.dust=idust;
-out.shade=o.shade;
 out.hdr=dem.hdr;
 
 et=toc(t1);

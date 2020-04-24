@@ -21,6 +21,7 @@ function [filledCube,refl,solarZ,cloudmask,pxweights]=...
 d=dir(fullfile(hdfdir,['*.' tile '.*.hdf']));
 d=struct2cell(d);
 d=d(1,:);
+assert(~isempty(d),'%s empty\n',hdfdir);
 
 [ ~,~,RasterReference] = sinusoidProjMODtile(tile);
 
@@ -74,6 +75,8 @@ parfor i=1:length(matdates)
         
         fprintf('loaded, corrected, and created masks for tile:%s date:%i \n',...
             tile,isodate);
+    else
+        fprintf('MOD09GA for %s %i not found,skipped\n',tile,isodate);
     end
 end
 
@@ -90,7 +93,7 @@ for i=1:size(refl,3) % for each band
         if ~wm(j)
             v=vec(:,j)
             t=isnan(v);
-            if nnz(~t) > 3
+            if nnz(~t) >= 2
                 %interpolate
                 v(t)=interp1(matdates(~t),v(~t),matdates(t));
                 %extrapolate

@@ -29,7 +29,7 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 %different dates and everything is reprojected to match the dem
 %takes a while if not subsetting, e.g. p42r34 
 
-for i=3:length(Rlist)
+for i=1:length(Rlist)
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});
     [~,fpart]=fileparts(rdir);
