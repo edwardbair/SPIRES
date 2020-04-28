@@ -72,7 +72,7 @@ Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
 
 wm=repmat(watermask,[1 1 size(fsca,3)]);
-fice=repmat(fice,[1 1 size(fsca,3)]);
+
 fsca(Zmask | wm) = 0;
 
 %create mask for cube where radius is > 50 & radius < 1190 for 7 or more days
@@ -92,19 +92,10 @@ fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
 
 fsca=smoothDataCube(fsca,newweights,'mask',~watermask,...
    'method','smoothingspline','SmoothingParam',0.02);
+
 %get some small fsca values from smoothing - set to zero
 fsca(fsca<fsca_thresh)=0;
 fsca(wm)=NaN;
-%viewable gap correction
-cc(isnan(cc))=0;
-fsca=fsca./(1-cc);
-fsca(fsca>1)=1;
-% fice correction
-fsca=fsca./(1-fice);
-fsca(fsca>1)=1;
-%min value of fsca is fice
-t=fsca<fice;
-fsca(t)=fice(t);
 
 fprintf('finished smoothing fsca %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
@@ -119,8 +110,6 @@ anyfsca=any(fsca,3);
 newweights=weights;
 newweights(isnan(fsca) | fsca==0)=0;
 
-% grainradius=smoothDataCube(grainradius,newweights,'mask',anyfsca,...
-%      'method','smoothingspline','SmoothingParam',0.75);
 dF=cat(3,zeros(size(fsca,1,2)),diff(fsca,1,3));
 %send logical cube for decreasing fsca
 fcube=dF<=0;
@@ -133,15 +122,6 @@ grainradius(fsca==0 | isnan(fsca))=NaN;
 
 fprintf('finished smoothing grain radius %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
-
-%use a different approach
-%replace high values with NaN
-% parfor i=1:size(dust,3)
-%    xx=squeeze(dust(:,:,i));
-%    v=quantile(xx(:),0.95);
-%    xx(xx>v)=NaN;
-%    dust(:,:,i)=xx;
-% end
 
 fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
@@ -161,6 +141,23 @@ fprintf('finished smoothing dust %s...%s\n',datestr(matdates(1)),...
 
 fprintf('writing cube %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
+
+t0=fsca==0; %track zeros to prevent 0/0 = NaN
+
+%viewable gap correction
+cc(isnan(cc))=0;
+fsca=fsca./(1-cc);
+
+fice=repmat(fice,[1 1 size(fsca,3)]);
+% fice correction
+fice(isnan(fice))=0;
+fsca=fsca./(1-fice);
+
+t=fsca<fice;
+fsca(t)=fice(t);
+
+fsca(fsca>1)=1;
+fsca(t0)=0;
 
 out.matdates=matdates;
 out.hdr=hdr;

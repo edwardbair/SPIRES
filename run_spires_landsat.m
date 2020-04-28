@@ -147,22 +147,44 @@ end
 t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
-o=run_spires(t0,t,acosd(mu),Ffile,~smask | nanmask | A.cloudmask | ...
-    A.watermask,fsca_thresh,pshade,A.dustmask,tolval,dem.hdr,red_b,...
+m=~smask | nanmask | A.cloudmask | A.watermask;
+%m=false(size(smask)); %solve for all pixels during testing
+
+o=run_spires(t0,t,acosd(mu),Ffile,m,fsca_thresh,pshade,A.dustmask,tolval,dem.hdr,red_b,...
     swir_b);
 
 ifsca=single(o.fsca);
-ifsca=ifsca./(1-A.cc);
+
+t0=ifsca==0; %track zeros to prevent 0/0 = NaN
+
+%viewable gap correction
+A.cc(isnan(A.cc))=0;
+%ifsca=ifsca./(1-A.cc);
+
+% fice correction
+A.fice(isnan(A.fice))=0;
 ifsca=ifsca./(1-A.fice);
+
+%have to copy matrix across 3rd dim to set to min(fsca,ice)
+fice_r=repmat(A.fice,[1 1 size(ifsca,3)]);
+t=ifsca<fice_r;
+ifsca(t)=fice_r(t);
+
 ifsca(ifsca>1)=1;
+ifsca(t0)=0;
 ifsca(ifsca<fsca_thresh)=0;
+
+% ifsca=ifsca./(1-A.cc);
+% ifsca=ifsca./(1-A.fice);
+% ifsca(ifsca>1)=1;
+% ifsca(ifsca<fsca_thresh)=0;
 
 %elevation cutoff
 el_mask=dem.Z<el_cutoff;
 ifsca(el_mask)=0;
 
 % set pixels outside boundary, in cloudy mask, or in shade
-ifsca(nanmask | A.cloudmask | ~smask)=NaN;
+ifsca(nanmask | A.cloudmask | ~smask | A.watermask)=NaN;
 
 igrainradius=single(o.grainradius);
 igrainradius(isnan(ifsca) | ifsca==0)=NaN;
@@ -174,6 +196,11 @@ out.fsca=ifsca;
 out.fshade=o.fshade;
 out.grainradius=igrainradius;
 out.dust=idust;
+out.watermask=A.watermask;
+out.shademask=~smask;
+out.cloudmask=A.cloudmask;
+out.nodatamask=nanmask;
+
 out.hdr=dem.hdr;
 
 et=toc(t1);

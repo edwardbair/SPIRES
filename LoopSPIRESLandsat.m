@@ -1,5 +1,5 @@
 function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
-    fsca_thresh,pshade,outdir,el_cutoff,subset)
+    fsca_thresh,pshade,outdir,el_cutoff)
 % call SPIRES Landsat in a loop
 %input:
 %basedir - base dir where L8 inputs live,
@@ -22,14 +22,12 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 % pshade - physical shade endmember, vector, bandsx1
 % outdir - where to write files out
 % el_cutoff - elevation cutoff, m
-%subset - either empty for none or [row1 row2;col1 col2], where are
-% row1/col1 are the starting pixels and row2/col2 are the end pixels,
-% e.g. for MMSA on p42r34, % [3280 3460;3740 3920]
 %note subset is based of DEM, as L8 has different sized scenes for
 %different dates and everything is reprojected to match the dem
 %takes a while if not subsetting, e.g. p42r34 
 
-for i=1:length(Rlist)
+for i=4:4
+% for i=9:length(Rlist)
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});
     [~,fpart]=fileparts(rdir);
@@ -40,10 +38,19 @@ for i=1:length(Rlist)
     fname=[pathrow,'.mat'];
     CCfile=fullfile(basedir,'cc',fname);
     WaterMaskfile=fullfile(basedir,'watermask',fname);
-    CloudMaskfile=fullfile(basedir,'cloudmask',fname);
+    CloudMaskfile=fullfile(basedir,'wvmask','cloudmask',[Rlist{i},'_wvmask.mat']);
+    cm=matfile(CloudMaskfile);
+    hdr=cm.hdr;
+    mask=cm.cloudmask;
+    [x,y]=pixcenters(hdr.RefMatrix,hdr.RasterReference.RasterSize,'makegrid');
+    x=x(~mask);
+    y=y(~mask);
+    [r,c]=map2pix(hdr.RefMatrix,x,y);
+    subset=[min(r) max(r);min(c) max(c)];
+    
     DustMaskfile=fullfile(basedir,'dustmask',fname);
     fIcefile=fullfile(basedir,'fice',fname);
-    
+   
     out=run_spires_landsat(r0dir,rdir,demfile,...
         Ffile,tolval,fsca_thresh,DustMaskfile,pshade,CCfile,...
         WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset);
@@ -55,5 +62,6 @@ for i=1:length(Rlist)
     for j=1:length(fn)
         m.(fn{j})=out.(fn{j});
     end
+    
     
 end
