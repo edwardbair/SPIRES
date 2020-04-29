@@ -1,5 +1,5 @@
 function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
-    fsca_thresh,DustMaskfile,pshade,CCfile,WaterMaskfile,CloudMaskfile,...
+    fsca_thresh,DustMaskfile,CCfile,WaterMaskfile,CloudMaskfile,...
     fIcefile,el_cutoff,subset)
 
 %run spires  for a landsat scene
@@ -18,7 +18,6 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
 % zero, e.g. 0.15, scalar
 % DustMaskfile - dust mask file location, locations where dust can be
 % estimated
-% pshade - physical shade endmember, vector, bandsx1
 % watermask
 % CCfile - location of .mat
 % canopy cover - canopy cover for pixels 0-1, size of scene
@@ -150,16 +149,15 @@ t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 m=~smask | nanmask | A.cloudmask | A.watermask;
 %m=false(size(smask)); %solve for all pixels during testing
 
-o=run_spires(t0,t,acosd(mu),Ffile,m,fsca_thresh,pshade,A.dustmask,tolval,dem.hdr,red_b,...
-    swir_b);
+o=run_spires(t0,t,acosd(mu),Ffile,m,fsca_thresh,A.dustmask,tolval,...
+    dem.hdr,red_b,swir_b);
 
-ifsca=single(o.fsca);
-
-t0=ifsca==0; %track zeros to prevent 0/0 = NaN
+fsca_raw=single(o.fsca);
+t0=fsca_raw==0; %track zeros to prevent 0/0 = NaN
 
 %viewable gap correction
 A.cc(isnan(A.cc))=0;
-%ifsca=ifsca./(1-A.cc);
+ifsca=fsca_raw./(1-A.cc);
 
 % fice correction
 A.fice(isnan(A.fice))=0;
@@ -174,11 +172,6 @@ ifsca(ifsca>1)=1;
 ifsca(t0)=0;
 ifsca(ifsca<fsca_thresh)=0;
 
-% ifsca=ifsca./(1-A.cc);
-% ifsca=ifsca./(1-A.fice);
-% ifsca(ifsca>1)=1;
-% ifsca(ifsca<fsca_thresh)=0;
-
 %elevation cutoff
 el_mask=dem.Z<el_cutoff;
 ifsca(el_mask)=0;
@@ -192,14 +185,16 @@ igrainradius(isnan(ifsca) | ifsca==0)=NaN;
 idust=single(o.dust);
 idust(isnan(ifsca) | ifsca==0)=NaN;
 
+out.fsca_raw=fsca_raw;
 out.fsca=ifsca;
-out.fshade=o.fshade;
+% out.fshade=o.fshade;
 out.grainradius=igrainradius;
 out.dust=idust;
 out.watermask=A.watermask;
 out.shademask=~smask;
 out.cloudmask=A.cloudmask;
 out.nodatamask=nanmask;
+out.cc=A.cc;
 
 out.hdr=dem.hdr;
 

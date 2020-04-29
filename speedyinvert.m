@@ -1,5 +1,7 @@
-function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,pshade,...
-    dustmask,dust,r)
+function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,...
+    dustmask,dust,r) 
+%function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,pshade,...
+%     dustmask,dust,r)
 %stripped down inversion for speed
 % input:
 %   R - Nx1 band reflectance as vector, center of bandpass
@@ -8,7 +10,6 @@ function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,pshade,...
 %   Ffile, location of griddedInterpolant with 4 inputs: radius (um),
 % dust (ppm), solarZ (deg),
 %   and band for a specific sensor, e.g. LandSat 8 OLI or MODIS
-%   pshade:  shade spectra (bx1)
 %   dustmask - only retrieve dust/grain radius values where this is true
 %   dust - dust val (ppmw), [] if needs to be solved for
 %   r - grain size val (um), [] if needs to be solved for
@@ -20,7 +21,8 @@ if isempty(F)
     F=X.F;
 end
 
-options = optimoptions('fmincon','Display','none','Algorithm','sqp');
+% options = optimoptions('fmincon','Display','none','Algorithm','sqp');
+options=optimoptions('lsqnonlin','Display','none');
 
 % make all inputs column vectors
 if ~iscolumn(R)
@@ -29,21 +31,21 @@ end
 if ~iscolumn(R0)
     R0=R0';
 end
-if ~iscolumn(pshade)
-    pshade=pshade';
-end
+% if ~iscolumn(pshade)
+%     pshade=pshade';
+% end
 
-out.x=NaN(4,1);
+out.x=NaN(3,1);
 
-A=[1 1 0 0];
-b=1;
+% A=[1 1 0 0];
+% b=1;
 
 %full dirty snow (dustmask) values
 %fsca, fshade,grain size (um), dust (ppm)
 fsca0=0.5;
 fsca_range=[0 1];
-fshade0=0;
-fshade_range=[0 0];
+% fshade0=0.05;
+% fshade_range=[0 1];
 r0=250;
 r_range=[30 1200];
 d0=10;
@@ -62,27 +64,41 @@ if ~isempty(r) %same for grain size
    r_range=[r r];
 end
 
-x0=[fsca0 fshade0 r0 d0];
-lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
-ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
+% x0=[fsca0 fshade0 r0 d0];
+% lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
+% ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
+
+x0=[fsca0 r0 d0];
+lb=[fsca_range(1) r_range(1) d_range(1)];
+ub=[fsca_range(2) r_range(2) d_range(2)];
 
 try
-    X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
+%     X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
+    X=lsqnonlin(@SnowCloudDiff,x0,lb,ub,options);
     out.x=X;
 catch ME
-    
     warning([ME.message,' solver crashed, skipping']);
 end
 
-    function diffR = SnowCloudDiff(x)
+function diffR = SnowCloudDiff(x)
         modelRefl=zeros(length(R),1);
         %x is fsca,radius,dust
         for i=1:length(R)
             %use radius,dust,solarZ, and band # for look up
-            modelRefl(i)=F([x(3),x(4),solarZ,i]);
+            modelRefl(i)=F([x(2),x(3),solarZ,i]);
         end
-        
-        modelRefl=x(1).*modelRefl + x(2).*pshade + (1-x(1)-x(2)).*R0;
-        diffR = norm(R - modelRefl);
+        modelRefl=x(1).*modelRefl+(1-x(1)).*R0;
+        diffR = R - modelRefl;
     end
+%     function diffR = SnowCloudDiff(x)
+%         modelRefl=zeros(length(R),1);
+%         %x is fsca,radius,dust
+%         for i=1:length(R)
+%             %use radius,dust,solarZ, and band # for look up
+%             modelRefl(i)=F([x(3),x(4),solarZ,i]);
+%         end
+%         
+%         modelRefl=x(1).*modelRefl + x(2).*pshade + (1-x(1)-x(2)).*R0;
+%         diffR = norm(R - modelRefl);
+%     end
 end

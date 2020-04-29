@@ -17,7 +17,9 @@ catch
     proj = h5readatt(h5file,location2,'mapprojection');
     projLocation = location2;
 end
-
+if iscell(proj)
+    proj=proj{:};
+end
 switch proj
     case 'geographic'
         hdr.gridtype = 'geographic';

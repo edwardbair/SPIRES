@@ -51,7 +51,7 @@ for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
     [R,~,solarZ,~,weights]=...
-    fillMODIScube(tile,rundates,hdfbasedir,topofile,mask,swir_b);
+    fillMODIScube(tile,rundates,hdfdir,topofile,watermask);
     out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
         dustmask,tolval,hdr,red_b,swir_b);
     fname=fullfile(outloc,[tile datestr(rundates(1),'yyyymm') '.mat']);

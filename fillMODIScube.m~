@@ -59,27 +59,21 @@ sunnames={'SolarZenith','SolarAzimuth'};
 [Slope,hdr]=GetTopography(topofile,'slope');
 Aspect=GetTopography(topofile,'aspect');
 
-% [cropr,cropc]=map2pix(BigR,hdr.RasterReference.XWorldLimits,...
-%     fliplr(hdr.RasterReference.YWorldLimits));
-% 
-% cropr=floor(cropr);
-% cropc=floor(cropc);
-
 %allocate 3 & 4D cubes with measurements for all days
 sz0=[hdr.RasterReference.RasterSize nbands length(matdates)];
 refl=zeros(sz0);
 solarZ=zeros([sz0(1) sz0(2) sz0(4)]);
-cloudmask=false([sz0(1) sz0(2) sz0(4)]);
+cloudmask=zeros([sz0(1) sz0(2) sz0(4)]);
 pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
 for i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     %allocate daily cubes
     o.refl=NaN(sz);
-    o.SolarZenith=NaN([sz(1) sz(2)]);
+    o.SolarZ=NaN([sz(1) sz(2)]);
     o.SolarAzimuth=NaN([sz(1) sz(2)]);
     o.cloudmask=false([sz(1) sz(2)]);
-    o.pxweights=zeros([sz(1) sz(2)]);
+    o.pxweights=zeros([sz(1) sz(2) length(tiles)]);
     %load up each tile
     for k=1:length(tiles)
         tile=tiles{k};
@@ -113,7 +107,7 @@ for i=1:length(matdates)
                     x = inpaint_nans(double(x),4);
                 end
                 x=imresize(x,tsiz(k,:));
-                o.(sunnames{j})(r,c)=imresize(x,tsiz(k,:));
+                o.(sunnames{i})(r,c)=imresize(x,tsiz(k,:));
             end
 
             %get all band reflectance
@@ -136,27 +130,20 @@ for i=1:length(matdates)
     
     %crop everything to topofile hdr
     fn=fieldnames(o);
-    
     for j=1:length(fn)
-       if strcmp(fn{j},'cloudmask')
-           method='nearest';
-       else
-           method='linear';
-       end
-       o.(fn{j})=rasterReprojection(o.(fn{j}),BigR,mstruct,...
-            hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
-            'Method',method);
+        
+%        o.(fn{j})=rasterReprojection(o.(fn{j}),BigR,mstruct,...
+%            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
     end
     %correct reflectance
-    o.refl_c=normalizeReflectance(o.refl,Slope,Aspect,o.SolarZenith,o.SolarAzimuth);
+    o.refl_c=normalizeReflectance(o.refl,Slope,Aspect,o.solarZ,o.solarAzimuth);
     refl(:,:,:,i)=o.refl_c;
-    solarZ(:,:,i)=o.SolarZenith;
+    solarZ(:,:,i)=o.solarZ;
     cloudmask(:,:,i)=o.cloudmask;
     pxweights(:,:,i)=o.pxweights;
 end
 
-sz=size(refl);
-filledCube=NaN(sz);
+filledCube=NaN(size(refl));
 mvec=reshape(mask,[sz(1)*sz(2) 1]);
 
 for i=1:size(refl,3) % for each band
@@ -185,7 +172,7 @@ for i=1:size(refl,3) % for each band
     XX=reshape(vec',[sz(1) sz(2) sz(4)]);
 
     parfor j=1:size(XX,3)
-        if any(isnan(XX(:,:,j)) & ~mask,'all') %fill any remaining NaNs 
+        if any(isnan(XX(:,:,j)) & ~watermask,'all') %fill any remaining NaNs 
             %that could  not be temporally interpolated spatially
              XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
         end
