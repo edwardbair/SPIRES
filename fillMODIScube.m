@@ -1,4 +1,4 @@
-function [filledCube,refl,solarZ,cloudmask,pxweights]=...
+function [filledCube,refl,SolarZenith,cloudmask,pxweights]=...
     fillMODIScube(tiles,matdates,hdfbasedir,topodir,topofile,mask,swir_b)
 %create gap filled (e.g. cloud-free) MOD09GA surface
 %reflectance
@@ -28,6 +28,10 @@ nbands=7;
 % mask as cloud if swir band (6) is > than
 swir_cloud_thresh=0.2;
 
+if ~iscell(tiles)
+    tiles={tiles};
+end
+
 % get all raster info
 R=zeros([length(tiles),3,2]);
 lr=zeros(length(tiles),2);
@@ -54,7 +58,7 @@ sBig=map2pix(BigR,xy);
 sBig=round(sBig);
 
 sz=[sBig nbands];
-sunnames={'SolarZenith','SolarAzimuth'};
+% sunnames={'SolarZenith','SolarAzimuth'};
 
 [Slope,hdr]=GetTopography(topofile,'slope');
 Aspect=GetTopography(topofile,'aspect');
@@ -68,18 +72,18 @@ Aspect=GetTopography(topofile,'aspect');
 %allocate 3 & 4D cubes with measurements for all days
 sz0=[hdr.RasterReference.RasterSize nbands length(matdates)];
 refl=zeros(sz0);
-solarZ=zeros([sz0(1) sz0(2) sz0(4)]);
+SolarZenith=zeros([sz0(1) sz0(2) sz0(4)]);
 cloudmask=false([sz0(1) sz0(2) sz0(4)]);
 pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
-for i=1:length(matdates)
+parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     %allocate daily cubes
-    o.refl=NaN(sz);
-    o.SolarZenith=NaN([sz(1) sz(2)]);
-    o.SolarAzimuth=NaN([sz(1) sz(2)]);
-    o.cloudmask=false([sz(1) sz(2)]);
-    o.pxweights=zeros([sz(1) sz(2)]);
+    refl_=NaN(sz);
+    SolarZenith_=NaN([sz(1) sz(2)]);
+    SolarAzimuth_=NaN([sz(1) sz(2)]);
+    cloudmask_=false([sz(1) sz(2)]);
+    pxweights_=zeros([sz(1) sz(2)]);
     %load up each tile
     for k=1:length(tiles)
         tile=tiles{k};
@@ -105,16 +109,23 @@ for i=1:length(matdates)
             f=fullfile(hdfbasedir,tile,d{m});
             
             [~,aWeights,~] = weightMOD09(f,topofile);
-            o.pxweights(r,c)= aWeights;
+            pxweights_(r,c)= aWeights;
                         
-            for j=1:length(sunnames)
-                x=single(GetMOD09GA(f,sunnames{j}));
+%             for j=1:length(sunnames)
+                x=single(GetMOD09GA(f,'SolarZenith'));
                 if any(isnan(x(:)))
                     x = inpaint_nans(double(x),4);
                 end
                 x=imresize(x,tsiz(k,:));
-                o.(sunnames{j})(r,c)=imresize(x,tsiz(k,:));
-            end
+                SolarZenith_(r,c)=imresize(x,tsiz(k,:));
+                
+%             end
+                x=single(GetMOD09GA(f,'SolarAzimuth'));
+                if any(isnan(x(:)))
+                    x = inpaint_nans(double(x),4);
+                end
+                x=imresize(x,tsiz(k,:));
+                SolarAzimuth_(r,c)=imresize(x,tsiz(k,:));
 
             %get all band reflectance
             sr=GetMOD09GA(f,'allbands');
@@ -125,8 +136,8 @@ for i=1:length(matdates)
             swir=sr(:,:,swir_b);       
             cm = mod09gacm & swir > swir_cloud_thresh;
             
-            o.refl(r,c,:)=sr;
-            o.cloudmask(r,c)=cm;
+            refl_(r,c,:)=sr;
+            cloudmask_(r,c)=cm;
             fprintf('loaded, corrected, and created masks for tile:%s date:%i \n',...
                 tile,isodate);
         else
@@ -135,24 +146,33 @@ for i=1:length(matdates)
     end
     
     %crop everything to topofile hdr
-    fn=fieldnames(o);
+%     fn=fieldnames(o);
     
-    for j=1:length(fn)
-       if strcmp(fn{j},'cloudmask')
-           method='nearest';
-       else
-           method='linear';
-       end
-       o.(fn{j})=rasterReprojection(o.(fn{j}),BigR,mstruct,...
+%     for j=1:length(fn)
+%        if strcmp(fn{j},'cloudmask')
+%            method='nearest';
+%        else
+%            method='linear';
+%        end
+       refl_=rasterReprojection(refl_,BigR,mstruct,...
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference)
+       cloudmask_=rasterReprojection(cloudmask_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
-            'Method',method);
-    end
+            'Method','nearest');
+       SolarZenith_=rasterReprojection(SolarZenith_,BigR,mstruct,...
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+       SolarAzimuth_=rasterReprojection(SolarAzimuth_,BigR,mstruct,...
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+       pxweights_=rasterReprojection(pxweights_,BigR,mstruct,...
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+%     end
     %correct reflectance
-    o.refl_c=normalizeReflectance(o.refl,Slope,Aspect,o.SolarZenith,o.SolarAzimuth);
-    refl(:,:,:,i)=o.refl_c;
-    solarZ(:,:,i)=o.SolarZenith;
-    cloudmask(:,:,i)=o.cloudmask;
-    pxweights(:,:,i)=o.pxweights;
+    refl_c_=normalizeReflectance(refl_,Slope,Aspect,SolarZenith_,...
+        SolarAzimuth_);
+    refl(:,:,:,i)=refl_c_;
+    SolarZenith(:,:,i)=SolarZenith_;
+    cloudmask(:,:,i)=cloudmask_;
+    pxweights(:,:,i)=pxweights_;
 end
 
 sz=size(refl);
