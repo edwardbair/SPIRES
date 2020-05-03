@@ -69,12 +69,12 @@ for j=1:3
         c2=colorbar('Location','south','Color','w');
         c2.Label.String='grain radius, \mum';
         c2.Label.Color=[1 1 1];
-        caxis([0 1200])
+        caxis([40 1200])
     elseif j==3
         c3=colorbar('Location','south','Color','w');
         c3.Label.String='dust conc, ppmw';
         c3.Label.Color=[1 1 1];
-        caxis([1 100]);
+        caxis([0 500]);
     end
 end
 

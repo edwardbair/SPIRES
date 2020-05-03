@@ -67,11 +67,10 @@ end
 fprintf('finished reading %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
-%elevation filter
 [Z,hdr]=GetTopography(topofile,'elevation');
 Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
-%masked area filter
+
 bigmask=repmat(mask,[1 1 size(fsca,3)]);
 
 fsca(Zmask | bigmask) = 0;
@@ -95,11 +94,11 @@ fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
 fsca=smoothDataCube(fsca,newweights,'mask',~mask,...
    'method','smoothingspline','SmoothingParam',0.02);
 
-fsca_raw=fsca;
-
 %get some small fsca values from smoothing - set to zero
 fsca(fsca<fsca_thresh)=0;
 fsca(bigmask)=NaN;
+
+fsca_raw=fsca;
 
 t0=fsca==0 | cc==1; %track zeros to prevent 0/0 = NaN and cc=1, fsca=0
 
@@ -118,9 +117,11 @@ fsca(t0)=0;
 %fix high values
 fsca(fsca>1)=1;
 
-%fix values below thresh to ice values
 t=fsca<fice;
 fsca(t)=fice(t);
+
+newweights=weights;
+newweights(isnan(fsca))=0;
 
 fprintf('finished smoothing fsca %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));

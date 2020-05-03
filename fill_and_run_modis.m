@@ -1,21 +1,24 @@
-function out=fill_and_run_modis(tile,matdates,hdfbasedir,topofile,mask,...
-    R0,Ffile,dustmask,tolval,fsca_thresh,outloc)
+function [out,fname]=fill_and_run_modis(tiles,matdates,hdfbasedir,...
+    topodir,topofile,mask,R0,Ffile,dustmask,tolval,fsca_thresh,...
+    outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
 %input:
-% tile - tilename, e.g. 'h08v05'
+% tiles - tilenames, e.g. 'h08v05'
 % if tile is a cell vector, assumption is made to mosaic multiple tiles
 % together then crop/reproject to topofile. watermask, R0,& dustmask will
 % all be assumed to match topofile hdr for spatial info
 % matdates - matdates for cube
 % hdfbasedir - where the MOD09GA HDF files live
 % must have sub directories that correspond to entries in tile, e.g. h08v04
+% topodir - directory for h5 topo files from from consolidateTopography, 
+% part of TopoHorizon that contain topofiles for each tile in tiles, 
+% e.g. h09v05dem_463m_Topography.h5
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
 % watermask- logical mask w/ ones for pixels to exclude (like water)
 % R0 - background image (MxNxb). Recommend using time-spaced smoothed
 % cube from a month with minimum fsca and clouds, like August or September,
 % then taking minimum of reflectance for each band (b)
-
 % Ffile, location of griddedInterpolant object that produces 
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
@@ -27,9 +30,7 @@ function out=fill_and_run_modis(tile,matdates,hdfbasedir,topofile,mask,...
 % scalar e.g. 0.05
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % outloc: path to write output
-% cc - static canopy cover, single or double, same size as watermask,
-% 0-1 for viewable gap fraction correction
-
+% nameprefix - name prefix for outputs, e.g. Sierra
 
 %output:
 %   out:
@@ -51,17 +52,16 @@ for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
     [R,~,solarZ,~,weights]=...
-    fillMODIScube(tile,rundates,hdfbasedir,topofile,mask,swir_b);
-    out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
-        dustmask,tolval,hdr,red_b,swir_b);
-    fname=fullfile(outloc,[tile datestr(rundates(1),'yyyymm') '.mat']);
+    fillMODIScube(tiles,rundates,hdfbasedir,topodir,topofile,mask,swir_b);
+    out=run_spires(R0,R,solarZ,Ffile,mask,fsca_thresh,dustmask,tolval,...
+        hdr,red_b,swir_b);
+    fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
     %fsca
     t=isnan(out.fsca);
-    out.fsca=uint8(out.fsca*100);
-    out.fsca(t)=intmax('uint8'); % 255 is NaN
-    mfile.fsca=out.fsca;
-    %fshade (not written to m file)    
+    out.fsca_raw=uint8(out.fsca*100);
+    out.fsca_raw(t)=intmax('uint8'); % 255 is NaN
+    mfile.fsca_raw=out.fsca_raw;
     %grain radius
     out.grainradius=uint16(out.grainradius);
     t=t | out.fsca==0;

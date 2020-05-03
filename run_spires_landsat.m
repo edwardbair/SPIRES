@@ -153,7 +153,7 @@ o=run_spires(t0,t,acosd(mu),Ffile,m,fsca_thresh,A.dustmask,tolval,...
     dem.hdr,red_b,swir_b);
 
 fsca_raw=single(o.fsca);
-t0=fsca_raw==0; %track zeros to prevent 0/0 = NaN
+t0=fsca_raw==0 | A.cc==1; %track zeros to prevent 0/0 = NaN
 
 %viewable gap correction
 A.cc(isnan(A.cc))=0;

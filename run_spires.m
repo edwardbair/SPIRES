@@ -1,4 +1,4 @@
-function out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
+function out=run_spires(R0,R,solarZ,Ffile,mask,fsca_thresh,...
     dustmask,tolval,hdr,red_b,swir_b)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
@@ -12,7 +12,7 @@ function out=run_spires(R0,R,solarZ,Ffile,watermask,fsca_thresh,...
 %for each band
 % with inputs: grain radius (um), dust (ppmw), solar zenith angle (deg),
 % band # (not necessarily in order of wavelength)
-% watermask: logical mask (MxN), true for water
+% mask: logical mask (MxN), true for areas to NOT process
 % fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % pshade: shade spectra (bx1) or photometric scalar, e.g. 0
 % dustmask: make where dust values can be retrieved, 0-1
@@ -34,7 +34,7 @@ if length(sz) == 3
    sz(4)=1; % singleton 4th dimenson
 end
 
-[X,Y]=pixcenters(hdr.RefMatrix,size(watermask),'makegrid');
+[X,Y]=pixcenters(hdr.RefMatrix,size(mask),'makegrid');
 
 fsca=zeros([sz(1)*sz(2) sz(4)]);
 grainradius=NaN([sz(1)*sz(2) sz(4)]);
@@ -43,7 +43,7 @@ dust=NaN([sz(1)*sz(2) sz(4)]);
 solarZ=reshape(double(solarZ),[sz(1)*sz(2) sz(4)]);
 R=reshape(double(R),[sz(1)*sz(2) sz(3) sz(4)]);
 R0=reshape(double(R0),[sz(1)*sz(2) sz(3)]);
-watermask=reshape(watermask,[sz(1)*sz(2) 1]);
+mask=reshape(mask,[sz(1)*sz(2) 1]);
 % fshade=zeros(size(fsca));
 X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
@@ -55,7 +55,7 @@ for i=1:sz(4) %for each day
     
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
         (thisR(:,red_b)+thisR(:,swir_b));
-    t=NDSI > 0  & ~watermask & ~isnan(thissolarZ);
+    t=NDSI > 0  & ~mask & ~isnan(thissolarZ);
     M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
     
     %keep track of indices
@@ -126,8 +126,8 @@ for i=1:sz(4) %for each day
         idx=im{j}; %indices for each unique val
         repxx(idx,1)=temp(j,1); %fsca
 %         repxx(idx,2)=temp(j,2); %shade
-        repxx(idx,3)=temp(j,2); %grain radius
-        repxx(idx,4)=temp(j,3); %dust
+        repxx(idx,2)=temp(j,2); %grain radius
+        repxx(idx,3)=temp(j,3); %dust
     end
     %now fill out all pixels
     fsca(t,i)=repxx(:,1);

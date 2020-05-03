@@ -69,6 +69,8 @@ else
     Var = lower(whichVariable);
 end
 switch Var
+    case 'raw_'
+        whichVariable = 'raw_snow_fraction';
     case 'snow'
         whichVariable = 'snow_fraction';
     case 'rock'
