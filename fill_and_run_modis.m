@@ -1,5 +1,5 @@
 function [out,fname]=fill_and_run_modis(tiles,matdates,hdfbasedir,...
-    topodir,topofile,mask,R0,Ffile,dustmask,tolval,fsca_thresh,...
+    topodir,topofile,mask,R0,Ffile,dust_thresh,dustmask,tolval,...
     outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
@@ -22,13 +22,11 @@ function [out,fname]=fill_and_run_modis(tiles,matdates,hdfbasedir,...
 % Ffile, location of griddedInterpolant object that produces 
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
-% pshade: (photometric) shade spectra (bx1); reflectances; or scalar
-% corresponding to bands
+% dust_thresh: threshold value for dust/grain retrievls, e.g. 0.90
 % dustmask: mask of loctations (MxN) where dust can be retireved (1) or not
 % (0)
 % tol val: threshold for uniquetol spectra, higher runs faster, 0 runs all pixesl
 % scalar e.g. 0.05
-% fsca_thresh: min fsca cutoff, scalar e.g. 0.15
 % outloc: path to write output
 % nameprefix - name prefix for outputs, e.g. Sierra
 
@@ -53,7 +51,7 @@ for i=1:length(m)
     rundates=matdates(idx);
     [R,~,solarZ,~,weights]=...
     fillMODIScube(tiles,rundates,hdfbasedir,topodir,topofile,mask,swir_b);
-    out=run_spires(R0,R,solarZ,Ffile,mask,fsca_thresh,dustmask,tolval,...
+    out=run_spires(R0,R,solarZ,Ffile,mask,dust_thresh,dustmask,tolval,...
         hdr,red_b,swir_b);
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
@@ -63,8 +61,8 @@ for i=1:length(m)
     out.fsca_raw(t)=intmax('uint8'); % 255 is NaN
     mfile.fsca_raw=out.fsca_raw;
     %grain radius
+    t=t | out.fsca==0 | isnan(out.grainradius); %sometimes grain radius is NaN
     out.grainradius=uint16(out.grainradius);
-    t=t | out.fsca==0;
     out.grainradius(t)=intmax('uint16'); %65535
     mfile.grainradius=out.grainradius;
     %dust

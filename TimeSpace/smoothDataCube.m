@@ -216,6 +216,7 @@ switch method
         % by column
         sCube = nan(size(iCube));
         weight(isnan(weight) | weight==0) = .01; % make sure we have enough weights
+%        weight(isnan(weight))=0;
         x = (1:size(iCube,1))';
         k=gcp('nocreate');
         if ~isempty(k)

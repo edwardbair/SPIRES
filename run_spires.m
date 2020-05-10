@@ -1,5 +1,5 @@
-function out=run_spires(R0,R,solarZ,Ffile,mask,fsca_thresh,...
-    dustmask,tolval,hdr,red_b,swir_b)
+function out=run_spires(R0,R,solarZ,Ffile,mask,...
+    dust_thresh,dustmask,tolval,hdr,red_b,swir_b)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -13,8 +13,8 @@ function out=run_spires(R0,R,solarZ,Ffile,mask,fsca_thresh,...
 % with inputs: grain radius (um), dust (ppmw), solar zenith angle (deg),
 % band # (not necessarily in order of wavelength)
 % mask: logical mask (MxN), true for areas to NOT process
-% fsca_thresh: min fsca cutoff, scalar e.g. 0.15
-% pshade: shade spectra (bx1) or photometric scalar, e.g. 0
+% dust_thresh: dust/grain size threshold value, e.g. 0.90
+
 % dustmask: make where dust values can be retrieved, 0-1
 % tolval: unique row tolerance value, i.e. 0.05 - bigger number goes faster
 % as more pixels are grouped together
@@ -44,7 +44,6 @@ solarZ=reshape(double(solarZ),[sz(1)*sz(2) sz(4)]);
 R=reshape(double(R),[sz(1)*sz(2) sz(3) sz(4)]);
 R0=reshape(double(R0),[sz(1)*sz(2) sz(3)]);
 mask=reshape(mask,[sz(1)*sz(2) 1]);
-% fshade=zeros(size(fsca));
 X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
 dm=reshape(dustmask,[sz(1)*sz(2) 1]);
@@ -89,8 +88,10 @@ for i=1:sz(4) %for each day
             pxR0=c(j,R0ind);
             sZ=c(j,sZind);
             o=speedyinvert(pxR,pxR0,sZ,Ffile,thisdm,[],[]);
-            if o.x(1) > 0.50
-                temp(j,:)=o.x;
+            if o.x(1) >= dust_thresh %store fsca,grain size, dust
+                temp(j,:)=o.x; 
+            else %only store fsca
+                temp(j,:)=[o.x(1) NaN NaN];
             end
         end
     end
@@ -125,13 +126,11 @@ for i=1:sz(4) %for each day
     for j=1:size(temp,1) % the unique indices
         idx=im{j}; %indices for each unique val
         repxx(idx,1)=temp(j,1); %fsca
-%         repxx(idx,2)=temp(j,2); %shade
         repxx(idx,2)=temp(j,2); %grain radius
         repxx(idx,3)=temp(j,3); %dust
     end
     %now fill out all pixels
     fsca(t,i)=repxx(:,1);
-%     fshade(t,i)=repxx(:,2);
     grainradius(t,i)=repxx(:,2);
     dust(t,i)=repxx(:,3);
     t2=toc(t1);
@@ -139,21 +138,13 @@ for i=1:sz(4) %for each day
 end
 
 fsca=reshape(fsca,[sz(1) sz(2) sz(4)]);
-% fshade=reshape(fshade,[sz(1) sz(2) sz(4)]);
 grainradius=reshape(grainradius,[sz(1) sz(2) sz(4)]);
 dust=reshape(dust,[sz(1) sz(2) sz(4)]);
 
-%this normalization occurs before others because fshade changes, unlike
-%cc or fice, so this step drastically reduces I/O.
-% fsca=fsca./(1-fshade);
-
-fsca(fsca<fsca_thresh)=0;
 grainradius(fsca==0)=NaN;
 dust(fsca==0)=NaN;
-% fshade(fsca==0)=NaN;
 
 out.fsca=fsca;
-% out.fshade=fshade;
 out.grainradius=grainradius;
 out.dust=dust;
 

@@ -99,9 +99,6 @@ R=getOLIsr(rdir,dem.hdr);
 
 adjust_vars={'cloudmask','fice','cc','watermask','dustmask'};
 
-%default vals
-
-
 for i=1:length(adjust_vars)
 if i==1
     m=matfile(CloudMaskfile);  
@@ -147,9 +144,8 @@ t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
 t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 m=~smask | nanmask | A.cloudmask | A.watermask;
-%m=false(size(smask)); %solve for all pixels during testing
 
-o=run_spires(t0,t,acosd(mu),Ffile,m,fsca_thresh,A.dustmask,tolval,...
+o=run_spires(t0,t,acosd(mu),Ffile,m,A.dustmask,tolval,...
     dem.hdr,red_b,swir_b);
 
 fsca_raw=single(o.fsca);
@@ -187,7 +183,6 @@ idust(isnan(ifsca) | ifsca==0)=NaN;
 
 out.fsca_raw=fsca_raw;
 out.fsca=ifsca;
-% out.fshade=o.fshade;
 out.grainradius=igrainradius;
 out.dust=idust;
 out.watermask=A.watermask;

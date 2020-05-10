@@ -1,4 +1,4 @@
-function make_modis_video(infiles,target,pshape)
+function make_modis_video(infiles,target,pshape,topofile)
 %create reprojected MODIS video
 %infiles - cell, N*1 list of h5 files to read
 %output struct from smooth_and_run_modis
@@ -12,24 +12,23 @@ function make_modis_video(infiles,target,pshape)
 %reproject to
 
 %pshape - polyshape of boundary area
-
+%topofile - h5 topofile location
 fname='spires_video.avi';
 f=VideoWriter(fname);
 
 f.FrameRate=10;
 f.Quality=90;
 open(f);
-vars={'snow_fraction','grain_size','dust'};
+vars={'snow_fraction','grain_size','dust','albedo'};
 
 f1=figure('Position',[100 10 1500 750],'Color',[0.6 0.6 0.6]);
-ha=tight_subplot(1, 3, 0.01, 0.01, 0);
+ha=tight_subplot(1, 4, 0.01, 0.01, 0);
 set(ha,'NextPlot','replaceChildren');
 
 [lon,lat]=pshape.boundary;
 
 t=~isnan(lat) & ~isnan(lon);
-[x,y]=mfwdtran(target.ProjectionStructure,lat,...
-    lon);
+[x,y]=mfwdtran(target.ProjectionStructure,lat,lon);
 [row,col]=map2pix(target.RasterReference,x,y);
 
 mask=poly2mask(col(t),row(t),target.RasterReference.RasterSize(1),...
@@ -40,18 +39,26 @@ mask=poly2mask(col(t),row(t),target.RasterReference.RasterSize(1),...
     lon);
 [bbox_y,bbox_x]=map2pix(target.RasterReference,x,y);
 
-% c=zeros(3,1);
-
 cm=colormap(parula);
 
 cm(1,:)=[0.4 0.4 0.4];
 
-for j=1:3
+[Slope,hdr]=GetTopography(topofile,'Slope');
+Aspect=GetTopography(topofile,'elevation');
+
+Slope=rasterReprojection(Slope,hdr.RefMatrix,hdr.ProjectionStructure,....
+    target.ProjectionStructure,'rasterref',target.RasterReference);
+Aspect=rasterReprojection(Aspect,hdr.RefMatrix,hdr.ProjectionStructure,....
+    target.ProjectionStructure,'rasterref',target.RasterReference);
+
+[x,y]=pixcenters(target.RefMatrix,target.RasterReference.RasterSize,'makegrid');
+[lat,lon]=minvtran(target.ProjectionStructure,x,y);
+
+for j=1:length(vars)
     axes(ha(j));
     ax=gca;
     imagesc;
     colormap(cm);
-%     plot(ha(j),col,row,'-k','LineWidth',0.25)
     xlim([bbox_x(1) bbox_x(2)+70]);
     ylim([bbox_y(2) bbox_y(1)+130]);
     
@@ -75,13 +82,18 @@ for j=1:3
         c3.Label.String='dust conc, ppmw';
         c3.Label.Color=[1 1 1];
         caxis([0 500]);
+     elseif j==4
+        c4=colorbar('Location','south','Color','w');
+        c4.Label.String='albedo';
+        c4.Label.Color=[1 1 1];
+        caxis([0.4 0.9]);
     end
 end
 
 for ii=1:size(infiles,1)
     fname=infiles{ii};
     in=struct();
-    for j=1:length(vars)
+    for j=1:3
         if j==1
             [in.(vars{j}),in.matdates,in.hdr]=GetEndmember(fname,vars{j});
         else
@@ -90,25 +102,29 @@ for ii=1:size(infiles,1)
     end
     
     for i=1:length(in.matdates)
+        x=struct();
+        [ declin, ~, solar_lon ]=Ephemeris(in.matdates(i)+10.5/24+8/24);
+        [mu0, phi0]=sunang(lat,lon,declin,solar_lon);
+        mu=sunslope(mu0,phi0,Slope,Aspect);
         for j=1:length(vars)
-            x=rasterReprojection(in.(vars{j})(:,:,i),in.hdr.RefMatrix,...
+            if j==4
+            t=~isnan(x.grain_size) & x.grain_size>0;
+            x.albedo=NaN(size(x.grain_size));    
+            x.albedo(t)=AlbedoLookup(double(x.grain_size(t)),double(mu0(t)),...
+                double(mu(t)),2,'dust',double(x.dust(t)).*1e-6);
+            else
+            x.(vars{j})=rasterReprojection(in.(vars{j})(:,:,i),in.hdr.RefMatrix,...
                 in.hdr.ProjectionStructure,target.ProjectionStructure,...
                 'rasterref',target.RasterReference);
-   
-%             if j==1
-% %                 x(x==0)=NaN;
-%             end
-%             x(~mask)=NaN;
-            x(isnan(x))=0;
-            x(~mask)=NaN;
-            imagesc(ha(j),x,'AlphaData',double(mask));
+            end
+            x.(vars{j})(isnan(x.(vars{j})))=0;
+            x.(vars{j})(~mask)=NaN;
+            imagesc(ha(j),x.(vars{j}),'AlphaData',double(mask));
             if j==1
-%                 cc=colorbar('Location','south','Color','w');
-        %        c.Label.String=['fsca ' datestr(in.matdates(i))];
-            
+
             c1.Label.String=['fsca ' datestr(in.matdates(i))];
             end
-%             freezeColors(ha(j),'nancolor',[0.6 0.6 0.6]);
+
         end
         frame=getframe(f1);
         writeVideo(f,frame)

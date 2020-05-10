@@ -131,9 +131,9 @@ fprintf('smoothing grain radius %s...%s\n',datestr(matdates(1)),...
 %create mask of any fsca for interpolation
 anyfsca=any(fsca,3);
 
-% set all weights for NaNs to 0
 newweights=weights;
-newweights(isnan(fsca) | fsca==0)=0;
+newweights(isnan(fsca) | fsca==0)=0; %no snow, no weight
+newweights(~gmask)=0;
 
 dF=cat(3,zeros(size(fsca,1,2)),diff(fsca,1,3));
 %send logical cube for decreasing fsca
