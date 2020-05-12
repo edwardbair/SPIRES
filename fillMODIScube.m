@@ -1,4 +1,4 @@
-function [filledCube,refl,SolarZenith,cloudmask,pxweights]=...
+function [filledCube,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
     fillMODIScube(tiles,matdates,hdfbasedir,topodir,topofile,mask,swir_b)
 %create gap filled (e.g. cloud-free) MOD09GA surface
 %reflectance
@@ -20,7 +20,8 @@ function [filledCube,refl,SolarZenith,cloudmask,pxweights]=...
 %output:
 %filledCube: gap filled (cloud free) cube of MOD09GA values
 %refl: terrain-corrected MOD09GA w/ NaNs for clouds and other missing data
-%solarZ: solar zenith angles for cube
+%SolarZenith: solar zenith angles for cube
+%SensorZenith: sensor zenith angles for cube
 %cloudmask: cloudmask cube, logical
 %pxweights: weight cube for each pixel (all bands together), 0-1
 
@@ -63,16 +64,11 @@ sz=[sBig nbands];
 [Slope,hdr]=GetTopography(topofile,'slope');
 Aspect=GetTopography(topofile,'aspect');
 
-% [cropr,cropc]=map2pix(BigR,hdr.RasterReference.XWorldLimits,...
-%     fliplr(hdr.RasterReference.YWorldLimits));
-% 
-% cropr=floor(cropr);
-% cropc=floor(cropc);
-
 %allocate 3 & 4D cubes with measurements for all days
 sz0=[hdr.RasterReference.RasterSize nbands length(matdates)];
 refl=zeros(sz0);
 SolarZenith=zeros([sz0(1) sz0(2) sz0(4)]);
+SensorZenith=zeros([sz0(1) sz0(2) sz0(4)]);
 cloudmask=false([sz0(1) sz0(2) sz0(4)]);
 pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
@@ -81,6 +77,7 @@ parfor i=1:length(matdates)
     %allocate daily cubes
     refl_=NaN(sz);
     SolarZenith_=NaN([sz(1) sz(2)]);
+    SensorZenith_=NaN([sz(1) sz(2)]);
     SolarAzimuth_=NaN([sz(1) sz(2)]);
     cloudmask_=false([sz(1) sz(2)]);
     pxweights_=zeros([sz(1) sz(2)]);
@@ -111,7 +108,7 @@ parfor i=1:length(matdates)
             [~,aWeights,~] = weightMOD09(f,topofile);
             pxweights_(r,c)= aWeights;
                         
-%             for j=1:length(sunnames)
+
                 x=single(GetMOD09GA(f,'SolarZenith'));
                 if any(isnan(x(:)))
                     x = inpaint_nans(double(x),4);
@@ -119,14 +116,21 @@ parfor i=1:length(matdates)
                 x=imresize(x,tsiz(k,:));
                 SolarZenith_(r,c)=imresize(x,tsiz(k,:));
                 
-%             end
+
                 x=single(GetMOD09GA(f,'SolarAzimuth'));
                 if any(isnan(x(:)))
                     x = inpaint_nans(double(x),4);
                 end
                 x=imresize(x,tsiz(k,:));
                 SolarAzimuth_(r,c)=imresize(x,tsiz(k,:));
-
+                
+                % sensor zenith, and pixel sizes
+                x = single(GetMOD09GA(f,'sensorzenith'));
+                if any(isnan(x(:)))
+                    x = inpaint_nans(double(x),4);
+                end
+                SensorZenith_(r,c) = imresize(x,tsiz(k,:));
+                
             %get all band reflectance
             sr=GetMOD09GA(f,'allbands');
             
@@ -155,12 +159,14 @@ parfor i=1:length(matdates)
 %            method='linear';
 %        end
        refl_=rasterReprojection(refl_,BigR,mstruct,...
-            hdr.ProjectionStructure,'rasterref',hdr.RasterReference)
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
        cloudmask_=rasterReprojection(cloudmask_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
             'Method','nearest');
        SolarZenith_=rasterReprojection(SolarZenith_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+       SensorZenith_=rasterReprojection(SensorZenith_,BigR,mstruct,...
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference); 
        SolarAzimuth_=rasterReprojection(SolarAzimuth_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
        pxweights_=rasterReprojection(pxweights_,BigR,mstruct,...
@@ -171,6 +177,7 @@ parfor i=1:length(matdates)
         SolarAzimuth_);
     refl(:,:,:,i)=refl_c_;
     SolarZenith(:,:,i)=SolarZenith_;
+    SensorZenith(:,:,i)=SensorZenith_;
     cloudmask(:,:,i)=cloudmask_;
     pxweights(:,:,i)=pxweights_;
 end

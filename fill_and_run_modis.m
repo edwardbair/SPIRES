@@ -1,5 +1,5 @@
-function [out,fname]=fill_and_run_modis(tiles,matdates,hdfbasedir,...
-    topodir,topofile,mask,R0,Ffile,dust_thresh,dustmask,tolval,...
+function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,matdates,...
+    hdfbasedir,topodir,topofile,mask,R0,Ffile,shade,dust_thresh,dustmask,tolval,...
     outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
@@ -22,6 +22,7 @@ function [out,fname]=fill_and_run_modis(tiles,matdates,hdfbasedir,...
 % Ffile, location of griddedInterpolant object that produces 
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
+% shade endmeber, scalar or vector, length of # bands
 % dust_thresh: threshold value for dust/grain retrievls, e.g. 0.90
 % dustmask: mask of loctations (MxN) where dust can be retireved (1) or not
 % (0)
@@ -30,15 +31,24 @@ function [out,fname]=fill_and_run_modis(tiles,matdates,hdfbasedir,...
 % outloc: path to write output
 % nameprefix - name prefix for outputs, e.g. Sierra
 
+
 %output:
 %   out:
 %   fsca: MxNxd
 %   grainradius: MxNxd
 %   dust: MxNxd
 %also writes 1 month .mat files with those outputs
+%fname - output filename 
+% vars - cell, variable list
+% divisor - divisors for variables
+% dtype - datatype for each variable
 
 red_b=3;
 swir_b=6;
+%intermediate variables
+vars={'fsca','fshade','grainradius','dust','weights','sensorZ'};
+divisor=[100 100 1 10 100 1];
+dtype={'uint8','uint8','uint16','uint16','uint8','uint8'};
 
 t1=tic;
 %run in one month chunks and save output
@@ -49,31 +59,48 @@ m=unique(dv(:,2),'stable');
 for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
-    [R,~,solarZ,~,weights]=...
+    [R,~,solarZ,sensorZ,~,weights]=...
     fillMODIScube(tiles,rundates,hdfbasedir,topodir,topofile,mask,swir_b);
-    out=run_spires(R0,R,solarZ,Ffile,mask,dust_thresh,dustmask,tolval,...
+    out=run_spires(R0,R,solarZ,Ffile,mask,shade,dust_thresh,dustmask,tolval,...
         hdr,red_b,swir_b);
+    out.weights=weights; %put weights into output struct
+    out.sensorZ=sensorZ; %put sensor zenith into output struct
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);
     mfile=matfile(fname,'Writable',true);
+    
+    for j=1:length(vars)
+        t=isnan(out.(vars{j}));
+        if ~strcmp(vars{j}(1),'f') %not fsca or fshade (grain size or dust)
+            t=t | out.fsca==0 | isnan(out.(vars{j}));
+        end
+        out.(vars{j})=cast(out.(vars{j})*divisor(j),dtype{j});
+        out.(vars{j})(t)=intmax(dtype{j});
+        mfile.(vars{j})=out.(vars{j});
+    end
     %fsca
-    t=isnan(out.fsca);
-    out.fsca_raw=uint8(out.fsca*100);
-    out.fsca_raw(t)=intmax('uint8'); % 255 is NaN
-    mfile.fsca_raw=out.fsca_raw;
-    %grain radius
-    t=t | out.fsca==0 | isnan(out.grainradius); %sometimes grain radius is NaN
-    out.grainradius=uint16(out.grainradius);
-    out.grainradius(t)=intmax('uint16'); %65535
-    mfile.grainradius=out.grainradius;
-    %dust
-    out.dust=uint16(out.dust*10);
-    out.dust(t)=intmax('uint16'); %65535
-    mfile.dust=out.dust;
-    %weights
-    t=isnan(weights);
-    out.weights=uint8(weights*100);
-    out.weights(t)=intmax('uint8'); %255
-    mfile.weights=out.weights;
+%     t=isnan(out.fsca);
+%     out.fsca_raw=uint8(out.fsca*100);
+%     out.fsca_raw(t)=intmax('uint8'); % 255 is NaN
+%     mfile.fsca_raw=out.fsca_raw;
+%     %fshade
+% %     t=isnan(out.fshade);
+%     out.fshade=uint8(out.fshade*100);
+%     out.fshade(t)=intmax('uint8'); % 255 is NaN
+%     mfile.fshade=out.fshade;
+%     %grain radius
+%     t=t | out.fsca_raw==0 | isnan(out.grainradius); %sometimes grain radius is NaN
+%     out.grainradius=uint16(out.grainradius);
+%     out.grainradius(t)=intmax('uint16'); %65535
+%     mfile.grainradius=out.grainradius;
+%     %dust
+%     out.dust=uint16(out.dust*10);
+%     out.dust(t)=intmax('uint16'); %65535
+%     mfile.dust=out.dust;
+%     %weights
+%     t=isnan(weights);
+%     out.weights=uint8(weights*100);
+%     out.weights(t)=intmax('uint8'); %255
+%     mfile.weights=out.weights;
     
     mfile.matdates=rundates;
     fprintf('wrote %s \n',fname);

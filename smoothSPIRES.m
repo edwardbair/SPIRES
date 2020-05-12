@@ -1,5 +1,6 @@
-function out=smoothSPIRES(nameprefix,matdates,topofile,mask,...
-    fsca_thresh,outloc,grainradius_nPersist,el_cutoff,cc,fice,endconditions)
+function out=smoothSPIRES(nameprefix,matdates,topofile,...
+    mask,fsca_thresh,outloc,grainradius_nPersist,el_cutoff,cc,fice,...
+    endconditions,vars,divisor,dtype)
 
 % smoothes SPIRES MODIS cubes 
 %input:
@@ -17,6 +18,9 @@ function out=smoothSPIRES(nameprefix,matdates,topofile,mask,...
 % fice - ice fraction, single or double 0-1
 % endconditions - string, end condition for splines for dust and grain size, 
 % e.g. 'estimate' or 'periodic', see slmset.m
+% vars - cell, variable list
+% divisor - divisors for variables
+% dtype - datatype for each variable
 
 %output:
 %   h5 cubes written out w/ variables
@@ -24,11 +28,10 @@ function out=smoothSPIRES(nameprefix,matdates,topofile,mask,...
 %   grainradius: MxNxd
 %   dust: MxNxd
 
-
 t1=tic;
 
 %filter and smooth
-out=smoothSPIREScube(nameprefix,outloc,matdates,...
+out=smoothSPIREScube(nameprefix,vars,divisor,dtype,outloc,matdates,...
     grainradius_nPersist,mask,topofile,el_cutoff,fsca_thresh,...
     cc,fice,endconditions);
 
@@ -37,19 +40,22 @@ fname=fullfile(outloc,[nameprefix datestr(matdates(end),'yyyy') '.h5']);
 if exist(fname,'file')
     delete(fname); 
 end
-fn={'fsca_raw','fsca','grainradius','dust'};
-fntarget={'raw_snow_fraction','snow_fraction','grain_size','dust'};
-dtype={'uint8','uint8','uint16','uint16'};
-divisors=[100 100 1 10];
 
-for i=1:length(fn)   
-    member=fntarget{i};
-    Value=out.(fn{i});
-    dS.(member).divisor=divisors(i);
-    dS.(member).dataType=dtype{i};
+%output variables
+outvars={'fsca_raw','fsca','grainradius','dust'};
+outnames={'raw_snow_fraction','snow_fraction','grain_size','dust'};
+outdtype={'uint8','uint8','uint16','uint16'};
+outdivisors=[100 100 1 10];
+
+for i=1:length(outvars)   
+    member=outnames{i};
+    Value=out.(outvars{i});
+    dS.(member).divisor=outdivisors(i);
+    dS.(member).dataType=outdtype{i};
     dS.(member).maxVal=max(Value(:));
     dS.(member).FillValue=intmax(dS.(member).dataType);
     writeh5stcubes(fname,dS,out.hdr,out.matdates,member,Value);
 end
+
 t2=toc(t1);
 fprintf('completed in %5.2f hr\n',t2/60/60);
