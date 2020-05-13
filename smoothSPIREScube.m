@@ -36,12 +36,6 @@ for i=1:length(matdates)
             out.(vars{j})=zeros([size(m.(vars{j}),1) size(m.(vars{j}),2) ...
                 length(matdates)],'single');
         end
-%         fsca=zeros([size(m.fsca_raw,1) size(m.fsca_raw,2) length(matdates)],'single');
-%         fshade=zeros([size(m.fsca_raw,1) size(m.fsca_raw,2) length(matdates)],'single');
-%         weights=zeros([size(m.fsca_raw,1) size(m.fsca_raw,2) length(matdates)],'single');
-%         %note zeros due to uint storage
-%         grainradius=zeros([size(m.fsca_raw,1) size(m.fsca_raw,2) length(matdates)],'single');
-%         dust=zeros([size(m.fsca_raw,1) size(m.fsca_raw,2) length(matdates)],'single');    
     end
     ind=datenum(dv)-datenum([dv(1:2) 1])+1;%1st day of month
 
@@ -53,38 +47,6 @@ for i=1:length(matdates)
         v=v/divisor(j);
         out.(vars{j})(:,:,i)=v;
     end
-    
-    %fsca
-    
-%     fsca_t=single(m.fsca_raw(:,:,ind));
-%     t=fsca_t==intmax('uint8');
-%     fsca_t(t)=NaN;
-%     fsca_t=fsca_t/100;
-%     %fshade
-%     fshade_t=single(m.fshade(:,:,ind));
-%     t=fshade_t==intmax('uint8');
-%     fshade_t(t)=NaN;
-%     fshade_t=fshade_t/100;
-%     %weights    
-%     weights_t=single(m.weights(:,:,ind));
-%     t=weights_t==intmax('uint8');
-%     weights_t(t)=NaN;
-%     weights_t=weights_t/100;
-%     %grain radius
-%     grainradius_t=single(m.grainradius(:,:,ind));
-%     t=grainradius_t==intmax('uint16');
-%     grainradius_t(t)=NaN;
-%     %dust
-%     dust_t=single(m.dust(:,:,ind));
-%     t=dust_t==intmax('uint16');
-%     dust_t(t)=NaN;
-%     dust_t=dust_t/10;
-%     
-%     fsca(:,:,i)=fsca_t;
-%     fshade(:,:,i)=fshade_t;
-%     weights(:,:,i)=weights_t;
-%     grainradius(:,:,i)=grainradius_t;
-%     dust(:,:,i)=dust_t;
 end
 
 fprintf('finished reading %s...%s\n',datestr(matdates(1)),...
@@ -93,14 +55,15 @@ fprintf('finished reading %s...%s\n',datestr(matdates(1)),...
 %store raw values before any adjustments
 out.fsca_raw=out.fsca;
 
-%fshade adj prior to smoothing
+out.fsca(out.fsca<fsca_thresh)=0;
+
+%fshade adj 
 t=out.fshade<1;
 out.fsca(t)=out.fsca(t)./(1-out.fshade(t));
 
-%and viewable gap correction prior to smoothing
+%and viewable gap correction 
 
 %enlarge cc by pixelsize
-
 earthRadius = 6.371007181e+03;
 orbitHeight = 705;
 [ppl,ppt,~] = pixelSize(earthRadius,orbitHeight,1,out.sensorZ);
@@ -110,8 +73,8 @@ cc(cc>1)=1;
 cc(isnan(cc))=0;
 
 out.fsca=out.fsca./(1-cc);
-out.fsca(out.fsca>1)=1;
-out.fsca(isnan(out.fsca))=0;
+out.fsca(out.fsca>1)=1; %includes cc==1 case of Inf, which is any pos #/0
+out.fsca(isnan(out.fsca))=0; %0/0 is NaN
 
 %elevation filter
 [Z,hdr]=GetTopography(topofile,'elevation');
@@ -122,7 +85,7 @@ bigmask=repmat(mask,[1 1 size(out.fsca,3)]);
 
 out.fsca(Zmask | bigmask) = 0;
 
-%create mask for cube where radius is > 50 & radius < 1190 for 7 or more days
+%create mask for cube where radius is > 50 & radius < 1190 for nPersist or more days
 
 gmask=snowPersistenceFilter(out.grainradius > 50 & out.grainradius < 1190,...
     grainradius_nPersist,1);
@@ -191,9 +154,9 @@ fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
 %compute grain sizes differences
-dG=cat(3,zeros(size(out.grainradius,1,2)),diff(out.grainradius,1,3));
+% dG=cat(3,zeros(size(out.grainradius,1,2)),diff(out.grainradius,1,3));
 %send logical cube for increasing grain sizes
-fcube=dG>=0;
+% fcube=dG>=0;
 
 out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
     'method','slm','monotonic','increasing','fcube',fcube,'knots',-3,...

@@ -70,37 +70,13 @@ for i=1:length(m)
     
     for j=1:length(vars)
         t=isnan(out.(vars{j}));
-        if ~strcmp(vars{j}(1),'f') %not fsca or fshade (grain size or dust)
-            t=t | out.fsca==0 | isnan(out.(vars{j}));
+        if j==3 || j==4  %grain size or dust
+            t=t | out.fsca==0 ;
         end
         out.(vars{j})=cast(out.(vars{j})*divisor(j),dtype{j});
         out.(vars{j})(t)=intmax(dtype{j});
         mfile.(vars{j})=out.(vars{j});
     end
-    %fsca
-%     t=isnan(out.fsca);
-%     out.fsca_raw=uint8(out.fsca*100);
-%     out.fsca_raw(t)=intmax('uint8'); % 255 is NaN
-%     mfile.fsca_raw=out.fsca_raw;
-%     %fshade
-% %     t=isnan(out.fshade);
-%     out.fshade=uint8(out.fshade*100);
-%     out.fshade(t)=intmax('uint8'); % 255 is NaN
-%     mfile.fshade=out.fshade;
-%     %grain radius
-%     t=t | out.fsca_raw==0 | isnan(out.grainradius); %sometimes grain radius is NaN
-%     out.grainradius=uint16(out.grainradius);
-%     out.grainradius(t)=intmax('uint16'); %65535
-%     mfile.grainradius=out.grainradius;
-%     %dust
-%     out.dust=uint16(out.dust*10);
-%     out.dust(t)=intmax('uint16'); %65535
-%     mfile.dust=out.dust;
-%     %weights
-%     t=isnan(weights);
-%     out.weights=uint8(weights*100);
-%     out.weights(t)=intmax('uint8'); %255
-%     mfile.weights=out.weights;
     
     mfile.matdates=rundates;
     fprintf('wrote %s \n',fname);
