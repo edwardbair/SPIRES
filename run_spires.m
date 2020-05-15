@@ -41,17 +41,12 @@ end
 
 
 for i=1:length(outvars)
-    if strcmp(outvars{i}(1),'f') %fractional
-        out.(outvars{i})=zeros([sz(1)*sz(2) sz(4)]);
-    else
+%     if strcmp(outvars{i}(1),'f') %fractional
+%         out.(outvars{i})=zeros([sz(1)*sz(2) sz(4)]);
+%     else
         out.(outvars{i})=NaN([sz(1)*sz(2) sz(4)]);
-    end
+%     end
 end
-
-% fsca=zeros([sz(1)*sz(2) sz(4)]);
-% fshade=zeros([sz(1)*sz(2) sz(4)]);
-% grainradius=NaN([sz(1)*sz(2) sz(4)]);
-% dust=NaN([sz(1)*sz(2) sz(4)]);
 
 solarZ=reshape(double(solarZ),[sz(1)*sz(2) sz(4)]);
 R=reshape(double(R),[sz(1)*sz(2) sz(3) sz(4)]);

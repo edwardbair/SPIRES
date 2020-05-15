@@ -148,16 +148,7 @@ parfor i=1:length(matdates)
             fprintf('MOD09GA for %s %i not found,skipped\n',tile,isodate);
         end
     end
-    
-    %crop everything to topofile hdr
-%     fn=fieldnames(o);
-    
-%     for j=1:length(fn)
-%        if strcmp(fn{j},'cloudmask')
-%            method='nearest';
-%        else
-%            method='linear';
-%        end
+
        refl_=rasterReprojection(refl_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
        cloudmask_=rasterReprojection(cloudmask_,BigR,mstruct,...
@@ -171,7 +162,7 @@ parfor i=1:length(matdates)
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
        pxweights_=rasterReprojection(pxweights_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
-%     end
+
     %correct reflectance
     refl_c_=normalizeReflectance(refl_,Slope,Aspect,SolarZenith_,...
         SolarAzimuth_);

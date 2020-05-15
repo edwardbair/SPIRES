@@ -1,4 +1,4 @@
-function Rc=normalizeReflectance(R,slope,aspect,solarZ,solarAzimuth)
+function [Rc,c]=normalizeReflectance(R,slope,aspect,solarZ,solarAzimuth)
 %perform topographic correction on reflectances such that all surfaces are
 %normalized to a flat and level surface
 %input:
@@ -7,7 +7,7 @@ function Rc=normalizeReflectance(R,slope,aspect,solarZ,solarAzimuth)
 % output:
 %corrected reflectance
 % Reference: Tan et al 2013 http://dx.doi.org/10.1016/j.rse.2013.05.013
-
+% c - correction factor
 
 %b/c of Dozier's strange convention for aspect
 aspect = 180 - aspect;
@@ -22,4 +22,4 @@ Rc=R.*c;
 %fix negative values
 Rc(Rc<0)=0;
 % fix values > 1
-Rc(Rc>1)=1;
+% Rc(Rc>1)=1;
