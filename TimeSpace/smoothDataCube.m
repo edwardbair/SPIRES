@@ -227,10 +227,10 @@ switch method
                     if nansum(y) == 0 || nnz(t)<2
                         sCube(:,c) = zeros(size(y));
                     else
-                        if monotonicflag
-                            f=FCube(:,c);
+                        f=FCube(:,c);
+                        if monotonicflag && any(f)
                             %find contiguous regions
-                            [start,finish]=contiguous(f);
+                            [start,finish]=contiguous(f);    
                             %use those to specify where spline should be
                             %monotonically increasing/decreasing
                             F=slmengine(x,double(y),monotonic,...

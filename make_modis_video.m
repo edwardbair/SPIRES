@@ -19,7 +19,16 @@ f=VideoWriter(fname);
 f.FrameRate=10;
 f.Quality=90;
 open(f);
+
+dvisflag=false;
 vars={'snow_fraction','grain_size','dust','albedo'};
+info=h5info(infiles{1});
+for i=1:length(info.Groups.Groups.Datasets)
+    if strcmp(info.Groups.Groups.Datasets(i).Name,'deltavis')
+        dvisflag=true;
+        vars={'snow_fraction','grain_size','deltavis','albedo'};        
+    end
+end
 
 f1=figure('Position',[100 10 1500 750],'Color',[0.6 0.6 0.6]);
 ha=tight_subplot(1, 4, 0.01, 0.01, 0);
@@ -35,8 +44,7 @@ mask=poly2mask(col(t),row(t),target.RasterReference.RasterSize(1),...
     target.RasterReference.RasterSize(2));
 
 [lon,lat]=pshape.boundingbox;
-[x,y]=mfwdtran(target.ProjectionStructure,lat,...
-    lon);
+[x,y]=mfwdtran(target.ProjectionStructure,lat,lon);
 [bbox_y,bbox_x]=map2pix(target.RasterReference,x,y);
 
 cm=colormap(parula);
@@ -79,9 +87,14 @@ for j=1:length(vars)
         caxis([40 1200])
     elseif j==3
         c3=colorbar('Location','south','Color','w');
-        c3.Label.String='dust conc, ppmw';
+        if dvisflag
+            c3.Label.String='deltavis';
+            caxis([0 0.4]);
+        else
+            c3.Label.String='dust conc, ppmw';
+            caxis([0 500]);
+        end
         c3.Label.Color=[1 1 1];
-        caxis([0 500]);
      elseif j==4
         c4=colorbar('Location','south','Color','w');
         c4.Label.String='albedo';
@@ -110,8 +123,15 @@ for ii=1:size(infiles,1)
             if j==4
             t=~isnan(x.grain_size) & x.grain_size>0;
             x.albedo=NaN(size(x.grain_size));    
-            x.albedo(t)=AlbedoLookup(double(x.grain_size(t)),double(mu0(t)),...
-                double(mu(t)),2,'dust',double(x.dust(t)).*1e-6);
+                if dvisflag
+                    x.albedo(t)=AlbedoLookup(double(x.grain_size(t)),...
+                        double(mu0(t)),double(mu(t)),2,'dust',0);
+                    x.albedo(t)=x.albedo(t)-0.63.*x.deltavis(t);
+                else
+                    x.albedo(t)=AlbedoLookup(double(x.grain_size(t)),...
+                        double(mu0(t)),...
+                        double(mu(t)),2,'dust',double(x.dust(t)).*1e-6);
+                end
             else
             x.(vars{j})=rasterReprojection(in.(vars{j})(:,:,i),in.hdr.RefMatrix,...
                 in.hdr.ProjectionStructure,target.ProjectionStructure,...

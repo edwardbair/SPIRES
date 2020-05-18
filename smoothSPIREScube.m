@@ -1,19 +1,29 @@
 function out=smoothSPIREScube(nameprefix,vars,divisor,dtype,outloc,matdates,...
-    nPersistDry,nPersistSnow,mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
+    nPersistDry,nPersistSnow,mingrainradius,maxgrainradius,mindust,maxdust,...
+    movfiltlength,mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
     endconditions)
 %function to smooth cube after running through SPIRES
 % nameprefix - name prefix for outputs, e.g. Sierra
-% vars - cell, variable list
-% divisor - divisors for variables
-% dtype - datatype for each variable
+% vars - cell, variable list from fill_and_run_modis
+% divisor - divisors for variables, divisors from fill_and_run_modis
+% dtype - datatype for each variable, datatype from fill_and_run_modis
 % outloc - output location, string
 % matdates - datenum vector for image days
-% grainradius_nPersist: min # of consecutive days needed with normal 
-% grain sizes to be kept as snow, e.g. 7
-% mask- logical mask w/ ones for areas to exclude 
+% nPersistDry: min # of consecutive days to trust a dry land retrieval,
+% e.g. 4
+% nPersistSnow: min # of consectuve days to trust a snow covered
+% retreival,e.g. 8, remember that these persistence filters are performed 
+% on cloud (and other gap) filled estimates
+% mingrainradius: min believable grain radius, um, e.g. 100 um
+% maxgrainradius: max believable grain radius, e.g. 1100 um
+% mindust: min dust content, e.g. 12 um
+% maxdust: max believable dust: max believable dust, e.g. 950 ppm
+% movfiltlength: moving filter length for dust and grain sizes, see
+% movmax.m and movmedian.m, e.g. 8
+% mask- logical mask w/ ones for areas to exclude
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
-% el_cutoff, min elevation for snow, m - scalar, e.g. 1500
-% fsca_thresh: min fsca cutoff, scalar e.g. 0.15
+% el_cutoff, min elevation for snow, m - scalar, e.g. 1000
+% fsca_thresh: min fsca cutoff, scalar e.g. 0.10
 % cc - static canopy cover, single or doube, same size as watermask,
 % 0-1 for viewable gap fraction correction
 % fice - fraction of ice/neve, single or double, 0-1, mxn
@@ -24,8 +34,9 @@ function out=smoothSPIREScube(nameprefix,vars,divisor,dtype,outloc,matdates,...
 %fsca, grainradius, dust, and hdr (geographic info)
 
 %1.34 hr/yr for h08v05, 2017
-fprintf('reading %s...%s\n',datestr(matdates(1)),...
-    datestr(matdates(end)));
+t1=tic;
+
+fprintf('reading %s...%s\n',datestr(matdates(1)),datestr(matdates(end)));
 
 for i=1:length(matdates)
     dv=datevec(matdates(i));
@@ -66,6 +77,9 @@ tmask=out.fsca>fsca_thresh;
 smask=snowPersistenceFilter(tmask,nPersistSnow,1);
 
 out.fsca(~smask & ~dmask)=NaN;
+%bad grain sizes
+badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius;
+out.fsca(badg)=NaN;
 
 %fshade adj 
 t=out.fshade<1;
@@ -92,18 +106,11 @@ out.fsca(t)=0;
 [Z,hdr]=GetTopography(topofile,'elevation');
 Zmask=Z < el_cutoff;
 Zmask=repmat(Zmask,[1 1 length(matdates)]);
+
 %masked area filter
 bigmask=repmat(mask,[1 1 size(out.fsca,3)]);
 
 out.fsca(Zmask | bigmask) = 0;
-
-%create mask for cube where radius is > 50 & radius < 1190 for nPersist or more days
-
-% gmask=snowPersistenceFilter(out.grainradius > 50 & out.grainradius < 1190,...
-%     grainradius_nPersist,1);
-
-% set to NAN days that aren't in that mask but are not zero fsca
-% out.fsca(~gmask & ~(out.fsca==0))=NaN;
 
 newweights=out.weights;
 newweights(isnan(out.fsca))=0;
@@ -136,6 +143,7 @@ out.fsca(out.fsca>1)=1;
 %fix values below thresh to ice values
 t=out.fsca<fice;
 out.fsca(t)=fice(t);
+out.fsca(out.fsca<fsca_thresh)=0;
 
 fprintf('finished smoothing fsca %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
@@ -146,27 +154,34 @@ fprintf('smoothing grain radius %s...%s\n',datestr(matdates(1)),...
 %create mask of any fsca for interpolation
 anyfsca=any(out.fsca,3);
 
-newweights=out.weights;
-newweights(isnan(out.fsca) | out.fsca==0)=0; %no snow, no weight
-mingrainradius=150;
-out.grainradius(out.grainradius<mingrainradius)=NaN;
-newweights(isnan(out.grainradius))=0;
-
-dF=cat(3,zeros(size(out.fsca,1,2)),diff(out.fsca,1,3));
-dG=cat(3,zeros(size(out.grainradius,1,2)),diff(out.grainradius,1,3));
-
 %send logical cube for decreasing fsca
-fcube=dF<=0;
+dF=cat(3,zeros(size(out.fsca,1,2)),diff(out.fsca,1,3));
+fcube=dF<0;
 
-%can't have decreasing fsca and grain size
-t=dF<=0 & dG<=0;
-newweights(t)=0;
+%grain sizes too small or large to be trusted
+out.grainradius(badg)=NaN;
 
-out.grainradius(newweights==0)=NaN;
+%compute max value using sliding window
+t=~isnan(out.grainradius);
+out.grainradius(t)=movmax(out.grainradius(t),movfiltlength,3);
+
+%set endpoints to max
+% out.grainradius(:,:,1)=max(out.grainradius,[],3);
+% out.grainradius(:,:,end)=max(out.grainradius,[],3);
+
+% use weights
+newweights=out.weights;
+newweights(isnan(out.grainradius) | out.fsca==0)=0;
+%set max weight to endpoints
+% newweights(:,:,1)=1;
+% newweights(:,:,end)=1;
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
-    'method','slm','monotonic','increasing','fcube',fcube,'knots',-3,...
+    'method','slm','monotonic','increasing','fcube',fcube,'knots',-2,...
     'endconditions',endconditions);
+
+out.grainradius(out.grainradius<mingrainradius)=mingrainradius;
+out.grainradius(out.grainradius>maxgrainradius)=maxgrainradius;
 
 out.grainradius(out.fsca==0 | isnan(out.fsca))=NaN;
 
@@ -176,32 +191,64 @@ fprintf('finished smoothing grain radius %s...%s\n',datestr(matdates(1)),...
 fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
-%compute grain sizes differences
-% dG=cat(3,zeros(size(out.grainradius,1,2)),diff(out.grainradius,1,3));
-%send logical cube for increasing grain sizes
-% fcube=dG>=0;
-out.dust(newweights==0)=NaN;
+% assume bad grain sizes are bad dust values
+badd=out.dust>maxdust;
+out.dust(badg | badd)=NaN;
+
+%median filter for dust
+% use weights
+newweights=out.weights;
+newweights(isnan(out.dust) | out.fsca==0)=0;
+%set max weight to endpoints
+% newweights(:,:,1)=1;
+% newweights(:,:,end)=1;
+
+t=~isnan(out.dust);
+out.dust(t)=movmedian(out.dust(t),movfiltlength,3);
+% out.dust(:,:,1)=max(out.dust,[],3);
+% out.dust(:,:,end)=max(out.dust,[],3);
 
 out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
-    'method','slm','monotonic','increasing','fcube',fcube,'knots',-3,...
+    'method','slm','monotonic','increasing','fcube',fcube,'knots',-2,...
     'endconditions',endconditions);
+
+out.dust(out.dust>maxdust)=maxdust;
+out.dust(out.dust<mindust)=mindust;
 out.dust(out.fsca==0 | isnan(out.fsca))=NaN;
 
 fprintf('finished smoothing dust %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
-fprintf('writing cube %s...%s\n',datestr(matdates(1)),...
-    datestr(matdates(end)));
+%write out h5 cubes
+fname=fullfile(outloc,[nameprefix datestr(matdates(end),'yyyy') '.h5']);
+if exist(fname,'file')
+    delete(fname); 
+end
 
-% out.fsca_raw=fsca_raw; %store elevation filtered & masked 
-% %(from input mask) fsca
 out.matdates=matdates;
 out.hdr=hdr;
-% out.fsca=fsca;
-% out.grainradius=grainradius;
-% out.dust=dust;
 
-fprintf('finished writing cube %s...%s\n',datestr(matdates(1)),...
-    datestr(matdates(end)));
+fprintf('writing cubes %s...%s\n',datestr(matdates(1)),...
+datestr(matdates(end)));
+
+%output variables
+outvars={'fsca_raw','fsca','grainradius','dust'};
+outnames={'raw_snow_fraction','snow_fraction','grain_size','dust'};
+outdtype={'uint8','uint8','uint16','uint16'};
+outdivisors=[100 100 1 10];
+
+for i=1:length(outvars)   
+    member=outnames{i};
+    Value=out.(outvars{i});
+    dS.(member).divisor=outdivisors(i);
+    dS.(member).dataType=outdtype{i};
+    dS.(member).maxVal=max(Value(:));
+    dS.(member).FillValue=intmax(dS.(member).dataType);
+    writeh5stcubes(fname,dS,out.hdr,out.matdates,member,Value);
+end
+
+t2=toc(t1);
+fprintf('completed in %5.2f hr\n',t2/60/60);
+
 end
 
