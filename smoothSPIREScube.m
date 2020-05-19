@@ -1,6 +1,6 @@
 function out=smoothSPIREScube(nameprefix,vars,divisor,dtype,outloc,matdates,...
     nPersistDry,nPersistSnow,mingrainradius,maxgrainradius,mindust,maxdust,...
-    movfiltlength,mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
+    mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
     endconditions)
 %function to smooth cube after running through SPIRES
 % nameprefix - name prefix for outputs, e.g. Sierra
@@ -18,8 +18,6 @@ function out=smoothSPIREScube(nameprefix,vars,divisor,dtype,outloc,matdates,...
 % maxgrainradius: max believable grain radius, e.g. 1100 um
 % mindust: min dust content, e.g. 12 um
 % maxdust: max believable dust: max believable dust, e.g. 950 ppm
-% movfiltlength: moving filter length for dust and grain sizes, see
-% movmax.m and movmedian.m, e.g. 8
 % mask- logical mask w/ ones for areas to exclude
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
 % el_cutoff, min elevation for snow, m - scalar, e.g. 1000
@@ -77,9 +75,6 @@ tmask=out.fsca>fsca_thresh;
 smask=snowPersistenceFilter(tmask,nPersistSnow,1);
 
 out.fsca(~smask & ~dmask)=NaN;
-%bad grain sizes
-badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius;
-out.fsca(badg)=NaN;
 
 %fshade adj 
 t=out.fshade<1;
@@ -100,7 +95,6 @@ t=out.fsca==0;
 out.fsca=out.fsca./(1-cc);
 out.fsca(out.fsca>1)=1; %includes cc==1 case of Inf, which is any pos #/0
 out.fsca(t)=0;
-% out.fsca(isnan(out.fsca))=0; %0/0 is NaN
 
 %elevation filter
 [Z,hdr]=GetTopography(topofile,'elevation');
@@ -121,7 +115,7 @@ fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
 out.fsca=smoothDataCube(out.fsca,newweights,'mask',~mask,...
-   'method','smoothingspline','SmoothingParam',0.02);
+   'method','smoothingspline','SmoothingParam',0.1);
 
 %get some small fsca values from smoothing - set to zero
 out.fsca(out.fsca<fsca_thresh)=0;
@@ -159,22 +153,17 @@ dF=cat(3,zeros(size(out.fsca,1,2)),diff(out.fsca,1,3));
 fcube=dF<0;
 
 %grain sizes too small or large to be trusted
+%bad grain sizes
+badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius;
 out.grainradius(badg)=NaN;
 
 %compute max value using sliding window
-t=~isnan(out.grainradius);
-out.grainradius(t)=movmax(out.grainradius(t),movfiltlength,3);
-
-%set endpoints to max
-% out.grainradius(:,:,1)=max(out.grainradius,[],3);
-% out.grainradius(:,:,end)=max(out.grainradius,[],3);
+% t=~isnan(out.grainradius);
+% out.grainradius(t)=movmax(out.grainradius(t),movfiltlength,3);
 
 % use weights
 newweights=out.weights;
 newweights(isnan(out.grainradius) | out.fsca==0)=0;
-%set max weight to endpoints
-% newweights(:,:,1)=1;
-% newweights(:,:,end)=1;
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
     'method','slm','monotonic','increasing','fcube',fcube,'knots',-2,...
@@ -199,14 +188,9 @@ out.dust(badg | badd)=NaN;
 % use weights
 newweights=out.weights;
 newweights(isnan(out.dust) | out.fsca==0)=0;
-%set max weight to endpoints
-% newweights(:,:,1)=1;
-% newweights(:,:,end)=1;
 
-t=~isnan(out.dust);
-out.dust(t)=movmedian(out.dust(t),movfiltlength,3);
-% out.dust(:,:,1)=max(out.dust,[],3);
-% out.dust(:,:,end)=max(out.dust,[],3);
+% t=~isnan(out.dust);
+% out.dust(t)=movmedian(out.dust(t),movfiltlength,3);
 
 out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
     'method','slm','monotonic','increasing','fcube',fcube,'knots',-2,...

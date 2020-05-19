@@ -66,6 +66,7 @@ for j=1:length(vars)
     axes(ha(j));
     ax=gca;
     imagesc;
+    axis image;
     colormap(cm);
     xlim([bbox_x(1) bbox_x(2)+70]);
     ylim([bbox_y(2) bbox_y(1)+130]);
