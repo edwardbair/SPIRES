@@ -1,5 +1,5 @@
-function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
-    fsca_thresh,outdir,el_cutoff)
+function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,shade,tolval,...
+    fsca_thresh,dust_thresh,outdir,el_cutoff)
 % call SPIRES Landsat in a loop
 %input:
 %basedir - base dir where L8 inputs live,
@@ -11,14 +11,17 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 %"watermask" - watermask in pPPPrRRR.mat with variable watermask, logical
 %"cloudmask" - cloudmask in pPPPrRRR.mat with variable cloudmask, logical
 %"sr" - surface reflectance dir w/ subdirs in R & R0 list
-
+%"dustmask" in pPPPrRRR.mat with variable dustmask, logical
 % R0list - directory list for R0, cell, Nx1
 % Rlist - directory list for R, cell Nx1
 % Ffile - mat file containing F griddedInterpolant R=F(grain radius (um),...
 % dust (ppmw),solarZenith (degrees),bands (scalar))
+% shade - shade endmeber, scalar or vector, length #bands
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.15, scalar
+% dust_thresh - minimum fsca value for dust & grain size detection e.g.
+% 0.5
 % outdir - where to write files out
 % el_cutoff - elevation cutoff, m
 %note subset is based of DEM, as L8 has different sized scenes for
@@ -26,7 +29,8 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,tolval,...
 %takes a while if not subsetting, e.g. p42r34 
 
 
-for i=1:length(Rlist)
+% for i=1:length(Rlist)
+for i=1:1
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});
     [~,fpart]=fileparts(rdir);
@@ -51,7 +55,7 @@ for i=1:length(Rlist)
     fIcefile=fullfile(basedir,'fice',fname);
    
     out=run_spires_landsat(r0dir,rdir,demfile,...
-        Ffile,tolval,fsca_thresh,DustMaskfile,CCfile,...
+        Ffile,shade,tolval,fsca_thresh,dust_thresh,DustMaskfile,CCfile,...
         WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset);
     
     fn=fieldnames(out);
@@ -61,6 +65,5 @@ for i=1:length(Rlist)
     for j=1:length(fn)
         m.(fn{j})=out.(fn{j});
     end
-    
     
 end

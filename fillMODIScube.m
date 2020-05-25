@@ -140,8 +140,11 @@ parfor i=1:length(matdates)
             swir=sr(:,:,swir_b);       
             cm = mod09gacm & swir > swir_cloud_thresh;
             
+            sr(cm)=NaN; % mask clouds
+            
             refl_(r,c,:)=sr;
             cloudmask_(r,c)=cm;
+ 
             fprintf('loaded, corrected, and created masks for tile:%s date:%i \n',...
                 tile,isodate);
         else
@@ -173,42 +176,44 @@ parfor i=1:length(matdates)
     pxweights(:,:,i)=pxweights_;
 end
 
-sz=size(refl);
-filledCube=NaN(sz);
-mvec=reshape(mask,[sz(1)*sz(2) 1]);
+filledCube=refl;
 
-for i=1:size(refl,3) % for each band
-    tic;
-    bandcube=squeeze(refl(:,:,i,:));
-    bandcube(cloudmask)=NaN; %set all the clouds to NaN
-    %fill datacube
-    vec=reshape(bandcube,[sz(1)*sz(2) sz(4)])'; %col major (days x pixels)
-    parfor j=1:size(vec,2)
-        if ~mvec(j)
-            v=vec(:,j)
-            t=isnan(v);
-            if nnz(~t) >= 2
-                %interpolate
-                v(t)=interp1(matdates(~t),v(~t),matdates(t));
-                %extrapolate
-                tt=isnan(v);
-                if any(tt)
-                    v(tt)=interp1(matdates(~tt),v(~tt),matdates(tt),...
-                        'nearest','extrap');
-                end
-                vec(:,j)=v;
-            end
-        end
-    end
-    XX=reshape(vec',[sz(1) sz(2) sz(4)]);
+% sz=size(refl);
+% filledCube=NaN(sz);
+% mvec=reshape(mask,[sz(1)*sz(2) 1]);
 
-    parfor j=1:size(XX,3)
-        if any(isnan(XX(:,:,j)) & ~mask,'all') %fill any remaining NaNs 
-            %that could  not be temporally interpolated spatially
-             XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
-        end
-    end
-    filledCube(:,:,i,:)=XX;
-    t2=toc;
-    fprintf('filled band:%i in %g min\n',i,t2/60);
-end
+% for i=1:size(refl,3) % for each band
+%     tic;
+%     bandcube=squeeze(refl(:,:,i,:));
+%     bandcube(cloudmask)=NaN; %set all the clouds to NaN
+%     %fill datacube
+%     vec=reshape(bandcube,[sz(1)*sz(2) sz(4)])'; %col major (days x pixels)
+%     parfor j=1:size(vec,2)
+%         if ~mvec(j)
+%             v=vec(:,j)
+%             t=isnan(v);
+%             if nnz(~t) >= 2
+%                 %interpolate
+%                 v(t)=interp1(matdates(~t),v(~t),matdates(t));
+%                 %extrapolate
+%                 tt=isnan(v);
+%                 if any(tt)
+%                     v(tt)=interp1(matdates(~tt),v(~tt),matdates(tt),...
+%                         'nearest','extrap');
+%                 end
+%                 vec(:,j)=v;
+%             end
+%         end
+%     end
+%     XX=reshape(vec',[sz(1) sz(2) sz(4)]);
+% 
+%     parfor j=1:size(XX,3)
+%         if any(isnan(XX(:,:,j)) & ~mask,'all') %fill any remaining NaNs 
+%             %that could  not be temporally interpolated spatially
+%              XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
+%         end
+%     end
+%     filledCube(:,:,i,:)=XX;
+%     t2=toc;
+%     fprintf('filled band:%i in %g min\n',i,t2/60);
+% end

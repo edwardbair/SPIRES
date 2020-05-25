@@ -1,6 +1,6 @@
 function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,matdates,...
-    hdfbasedir,topodir,topofile,mask,R0,Ffile,shade,dust_thresh,dustmask,tolval,...
-    outloc,nameprefix)
+    hdfbasedir,topodir,topofile,mask,R0,Ffile,shade,grain_thresh,dust_thresh,...
+    dustmask,tolval,outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -23,7 +23,8 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,matdates,...
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
 % shade endmeber, scalar or vector, length of # bands
-% dust_thresh: threshold value for dust/grain retrievls, e.g. 0.90
+% grain_thresh: min fsca value for grain size retrievals , e.g. 0.50
+% dust_thresh: min fsca value for dust retrievals, e.g. 0.95
 % dustmask: mask of loctations (MxN) where dust can be retireved (1) or not
 % (0)
 % tol val: threshold for uniquetol spectra, higher runs faster, 0 runs all pixesl
@@ -61,8 +62,8 @@ for i=1:length(m)
     rundates=matdates(idx);
     [R,~,solarZ,sensorZ,~,weights]=...
     fillMODIScube(tiles,rundates,hdfbasedir,topodir,topofile,mask,swir_b);
-    out=run_spires(R0,R,solarZ,Ffile,mask,shade,dust_thresh,dustmask,tolval,...
-        hdr,red_b,swir_b);
+    out=run_spires(R0,R,solarZ,Ffile,mask,shade,grain_thresh,dust_thresh,...
+        dustmask,tolval,hdr,red_b,swir_b);
     out.weights=weights; %put weights into output struct
     out.sensorZ=sensorZ; %put sensor zenith into output struct
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);

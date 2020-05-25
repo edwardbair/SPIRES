@@ -1,5 +1,5 @@
 function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,shade,...
-     dustmask,dust,r)
+     dustmask,shadebool,dust,r)
 %stripped down inversion for speed
 % input:
 %   R - Nx1 band reflectance as vector, center of bandpass
@@ -9,9 +9,10 @@ function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,shade,...
 % dust (ppm), solarZ (deg),
 %   and band for a specific sensor, e.g. LandSat 8 OLI or MODIS
 %   shade, shade endmember, scalar and vector length of R&R0
-%   dustmask - only retrieve dust/grain radius values where this is true
+%   dustmask - only retrieve dust values where this is true
 %   dust - dust val (ppmw), [] if needs to be solved for
 %   r - grain size val (um), [] if needs to be solved for
+%   shadebool - use shade or not
 % output:
 %   out: fsca, fshade, grain radius (um), and dust conc (ppm)
 persistent F
@@ -21,7 +22,6 @@ if isempty(F)
 end
 
 options = optimoptions('fmincon','Display','none','Algorithm','sqp');
-%options=optimoptions('lsqnonlin','Display','none');
 
 % make all inputs column vectors
 if ~iscolumn(R)
@@ -54,6 +54,10 @@ if ~dustmask %clean snow solution
    d0=0;
    d_range=[0 0];
 end
+if ~shadebool
+    fshade0=0;
+    fshade_range=[0 0];
+end
 if ~isempty(dust) %if dust values are provided, set them
     d0=dust;
     d_range=[dust dust];
@@ -67,28 +71,13 @@ x0=[fsca0 fshade0 r0 d0];
 lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
 ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
 
-% x0=[fsca0 r0 d0];
-% lb=[fsca_range(1) r_range(1) d_range(1)];
-% ub=[fsca_range(2) r_range(2) d_range(2)];
-
 try
     X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
-%     X=lsqnonlin(@SnowCloudDiff,x0,lb,ub,options);
     out.x=X;
 catch ME
     warning([ME.message,' solver crashed, skipping']);
 end
 
-% function diffR = SnowCloudDiff(x)
-%         modelRefl=zeros(length(R),1);
-%         %x is fsca,radius,dust
-%         for i=1:length(R)
-%             %use radius,dust,solarZ, and band # for look up
-%             modelRefl(i)=F([x(2),x(3),solarZ,i]);
-%         end
-%         modelRefl=x(1).*modelRefl+(1-x(1)).*R0;
-%         diffR = R - modelRefl;
-%     end
     function diffR = SnowCloudDiff(x)
         modelRefl=zeros(length(R),1);
         %x is fsca,fshade,radius,dust

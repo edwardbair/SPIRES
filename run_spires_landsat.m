@@ -1,5 +1,5 @@
-function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
-    fsca_thresh,DustMaskfile,CCfile,WaterMaskfile,CloudMaskfile,...
+function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
+    fsca_thresh,dust_thresh,DustMaskfile,CCfile,WaterMaskfile,CloudMaskfile,...
     fIcefile,el_cutoff,subset)
 
 %run spires  for a landsat scene
@@ -13,9 +13,12 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,tolval,...
 % ProjectionStructure
 % Ffile - mat file containing F griddedInterpolant R=F(grain radius (um),...
 % dust (ppmw),solarZenith (degrees),bands (scalar))
-% tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
+% shade - shade endmeber, scalar or vector, length #bands
+%tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
-% zero, e.g. 0.15, scalar
+% zero, e.g. 0.10, scalar
+% dust_thresh - minimum fsca value for dust & grain size detection e.g.
+% 0.5
 % DustMaskfile - dust mask file location, locations where dust can be
 % estimated
 % watermask
@@ -145,15 +148,22 @@ t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
 
 m=~smask | nanmask | A.cloudmask | A.watermask;
 
-o=run_spires(t0,t,acosd(mu),Ffile,m,A.dustmask,tolval,...
-    dem.hdr,red_b,swir_b);
+% o=run_spires(t0,t,acosd(mu),Ffile,m,A.dustmask,tolval,...
+%     dem.hdr,red_b,swir_b);
+
+o=run_spires(t0,t,acosd(mu),Ffile,m,shade,...
+    dust_thresh,A.dustmask,tolval,dem.hdr,red_b,swir_b);
 
 fsca_raw=single(o.fsca);
 t0=fsca_raw==0 | A.cc==1; %track zeros to prevent 0/0 = NaN
 
+%fshade correction
+fshade=o.fshade;
+ifsca=fsca_raw./(1-fshade);
+
 %viewable gap correction
 A.cc(isnan(A.cc))=0;
-ifsca=fsca_raw./(1-A.cc);
+ifsca=ifsca./(1-A.cc);
 
 % fice correction
 A.fice(isnan(A.fice))=0;
@@ -183,6 +193,7 @@ idust(isnan(ifsca) | ifsca==0)=NaN;
 
 out.fsca_raw=fsca_raw;
 out.fsca=ifsca;
+out.fshade=fshade;
 out.grainradius=igrainradius;
 out.dust=idust;
 out.watermask=A.watermask;
@@ -190,6 +201,8 @@ out.shademask=~smask;
 out.cloudmask=A.cloudmask;
 out.nodatamask=nanmask;
 out.cc=A.cc;
+out.mu=mu;
+out.mu0=acosd(solarZ);
 
 out.hdr=dem.hdr;
 

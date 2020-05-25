@@ -65,7 +65,7 @@ fprintf('finished reading %s...%s\n',datestr(matdates(1)),...
 out.fsca_raw=out.fsca;
 
 %create trust mask for zero fsca values, skipped or missing is NaN
-tmask=(isnan(out.fsca) | out.fsca<fsca_thresh) & out.weights>0;
+tmask=out.fsca<fsca_thresh & out.weights>0;
 dmask=snowPersistenceFilter(tmask,nPersistDry,1);
 
 out.fsca(dmask)=0;
