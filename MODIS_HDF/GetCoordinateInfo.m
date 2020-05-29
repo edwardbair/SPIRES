@@ -1,6 +1,7 @@
 function [ hdr ] = GetCoordinateInfo( h5file,location,rastersize )
 % [ hdr ] = GetCoordinateInfo( h5file,location,rastersize )
 %
+
 % 'location' is problematic, because sometimes the information needed is in
 % '/Grid', but otherwise in '/Grid/500m' or '/Grid/MODIS_GRID_500m'.
 % Logically, information about the projection should be in '/Grid' because
@@ -11,11 +12,14 @@ location2 = '/Grid';
 
 rastersize = rastersize(1:2);
 try
-    proj = h5readatt(h5file,location,'mapprojection');
-    projLocation = location;
+proj = h5readatt(h5file,location,'mapprojection');
+projLocation = location;
 catch
     proj = h5readatt(h5file,location2,'mapprojection');
     projLocation = location2;
+end
+if iscell(proj)
+   proj=proj{:}; %problem with char stored as cell in PC
 end
 
 switch proj
@@ -39,9 +43,14 @@ switch proj
         mstruct = defaultm(proj);
         for k=1:nFields
             thisfield = info.Attributes(k).Name;
+            
             if ~(strcmpi(thisfield,'mapprojection') ||...
                     strcmpi(thisfield,'referencingmatrix'))
-                mstruct.(thisfield) = info.Attributes(k).Value;
+                v=info.Attributes(k).Value;
+                if iscell(v) % problem with char stored as cell in PC
+                    v=v{:};
+                end
+                mstruct.(thisfield) = v;
             end
         end
         fn = fieldnames(mstruct);
