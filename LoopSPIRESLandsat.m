@@ -1,5 +1,5 @@
 function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,shade,tolval,...
-    fsca_thresh,dust_thresh,outdir,el_cutoff)
+    fsca_thresh,grain_thresh,dust_thresh,outdir,el_cutoff)
 % call SPIRES Landsat in a loop
 %input:
 %basedir - base dir where L8 inputs live,
@@ -20,8 +20,9 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,shade,tolval,...
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.15, scalar
+% grain_tresh - minimum fsca for grain size detection, e.g 0.25
 % dust_thresh - minimum fsca value for dust & grain size detection e.g.
-% 0.5
+% 0.75
 % outdir - where to write files out
 % el_cutoff - elevation cutoff, m
 %note subset is based of DEM, as L8 has different sized scenes for
@@ -55,7 +56,8 @@ for i=1:1
     fIcefile=fullfile(basedir,'fice',fname);
    
     out=run_spires_landsat(r0dir,rdir,demfile,...
-        Ffile,shade,tolval,fsca_thresh,dust_thresh,DustMaskfile,CCfile,...
+        Ffile,shade,tolval,fsca_thresh,grain_thresh,dust_thresh,...
+        DustMaskfile,CCfile,...
         WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset);
     
     fn=fieldnames(out);

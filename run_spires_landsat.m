@@ -1,5 +1,5 @@
 function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
-    fsca_thresh,dust_thresh,DustMaskfile,CCfile,WaterMaskfile,CloudMaskfile,...
+    fsca_thresh,grain_thresh,dust_thresh,DustMaskfile,CCfile,WaterMaskfile,CloudMaskfile,...
     fIcefile,el_cutoff,subset)
 
 %run spires  for a landsat scene
@@ -17,8 +17,9 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 %tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.10, scalar
-% dust_thresh - minimum fsca value for dust & grain size detection e.g.
-% 0.5
+% grain_thresh - minimum fsca value for grain size detection, e.g 0.25
+% dust_thresh - minimum fsca value for dust size detection e.g.
+% 0.75
 % DustMaskfile - dust mask file location, locations where dust can be
 % estimated
 % watermask
@@ -151,7 +152,7 @@ m=~smask | nanmask | A.cloudmask | A.watermask;
 % o=run_spires(t0,t,acosd(mu),Ffile,m,A.dustmask,tolval,...
 %     dem.hdr,red_b,swir_b);
 
-o=run_spires(t0,t,acosd(mu),Ffile,m,shade,...
+o=run_spires(t0,t,acosd(mu),Ffile,m,shade,grain_thresh,...
     dust_thresh,A.dustmask,tolval,dem.hdr,red_b,swir_b);
 
 fsca_raw=single(o.fsca);
