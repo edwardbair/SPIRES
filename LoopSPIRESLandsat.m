@@ -30,7 +30,8 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,shade,tolval,...
 %takes a while if not subsetting, e.g. p42r34 
 
 
- for i=1:length(Rlist)
+% for i=1:length(Rlist)
+for i=8:8
 
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});

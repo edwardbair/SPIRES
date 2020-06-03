@@ -146,8 +146,8 @@ thdr=m.hdr;
 end
 
 %normalizeReflectance
-% t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0);
-% t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0);
+t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0,'rotation');
+t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0,'rotation');
 
 m=~smask | nanmask | A.cloudmask | A.watermask;
 
