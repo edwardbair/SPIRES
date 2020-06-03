@@ -21,5 +21,11 @@ Rc=R.*c;
 
 %fix negative values
 Rc(Rc<0)=0;
-% fix values > 1
-% Rc(Rc>1)=1;
+% scale spectra with max > 1 by max
+mx=max(Rc,[],3);
+t=any(Rc>1,3);
+mx(~t)=1;
+Rc=Rc./mx;
+
+    
+    

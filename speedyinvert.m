@@ -72,8 +72,9 @@ lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
 ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
 
 try
-    X = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
+    [X,fval] = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
     out.x=X;
+    out.stats=fval;
 catch ME
     warning([ME.message,' solver crashed, skipping']);
 end

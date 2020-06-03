@@ -151,6 +151,9 @@ end
 
 m=~smask | nanmask | A.cloudmask | A.watermask;
 
+% o=run_spires(t0,t,acosd(mu),Ffile,m,shade,grain_thresh,...
+%    dust_thresh,A.dustmask,tolval,dem.hdr,red_b,swir_b);
+
 o=run_spires(t0,t,acosd(mu),Ffile,m,shade,grain_thresh,...
    dust_thresh,A.dustmask,tolval,dem.hdr,red_b,swir_b);
 
