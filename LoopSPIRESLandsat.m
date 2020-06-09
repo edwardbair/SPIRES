@@ -1,38 +1,35 @@
-function LoopSPIRESLandsat(basedir,R0list,Rlist,Ffile,shade,tolval,...
-    fsca_thresh,grain_thresh,dust_thresh,outdir,el_cutoff)
+function LoopSPIRESLandsat(basedir,R0list,Rlist,subsetmasklist,Ffile,...
+    shade,tolval,fsca_thresh,grain_thresh,dust_thresh,outdir,el_cutoff)
 % call SPIRES Landsat in a loop
 %input:
-%basedir - base dir where L8 inputs live,
+%basedir - base dir where L8 inputs live
 %must have subdirs:
 %"cc" - canopy cover in pPPPrRRR.mat, where PPP and RRR are 3 digit path &
 %rows, each file must contain cc as a canopy fraction, single
 %"dem" - dem in pPPPrRRR_dem.mat with variable Z, single
 %"fice" - ice fraction in pPPPrRRR.mat with variable fice, single
 %"watermask" - watermask in pPPPrRRR.mat with variable watermask, logical
-%"cloudmask" - cloudmask in pPPPrRRR.mat with variable cloudmask, logical
 %"sr" - surface reflectance dir w/ subdirs in R & R0 list
 %"dustmask" in pPPPrRRR.mat with variable dustmask, logical
 % R0list - directory list for R0, cell, Nx1
 % Rlist - directory list for R, cell Nx1
+% subsetmasklist - list of subset files corresponding to Rlist, cell Nx1
 % Ffile - mat file containing F griddedInterpolant R=F(grain radius (um),...
 % dust (ppmw),solarZenith (degrees),bands (scalar))
 % shade - shade endmeber, scalar or vector, length #bands
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
-% zero, e.g. 0.15, scalar
-% grain_tresh - minimum fsca for grain size detection, e.g 0.25
+% zero, e.g. 0.10, scalar
+% grain_tresh - minimum fsca for grain size detection, e.g 0.95
 % dust_thresh - minimum fsca value for dust & grain size detection e.g.
-% 0.75
+% 0.95
 % outdir - where to write files out
 % el_cutoff - elevation cutoff, m
 %note subset is based of DEM, as L8 has different sized scenes for
 %different dates and everything is reprojected to match the dem
 %takes a while if not subsetting, e.g. p42r34 
 
-
-% for i=1:length(Rlist)
-for i=8:8
-
+for i=11:11
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});
     [~,fpart]=fileparts(rdir);
@@ -43,14 +40,35 @@ for i=8:8
     fname=[pathrow,'.mat'];
     CCfile=fullfile(basedir,'cc',fname);
     WaterMaskfile=fullfile(basedir,'watermask',fname);
-    CloudMaskfile=fullfile(basedir,'wvmask','cloudmask',[Rlist{i},'_wvmask.mat']);
-    cm=matfile(CloudMaskfile);
-    hdr=cm.hdr;
-    mask=cm.cloudmask;
-    [x,y]=pixcenters(hdr.RefMatrix,hdr.RasterReference.RasterSize,'makegrid');
-    x=x(~mask);
-    y=y(~mask);
-    [r,c]=map2pix(hdr.RefMatrix,x,y);
+    CloudMaskfile=fullfile(basedir,'cloudmask',fname);
+%     CloudMaskfile=fullfile(basedir,'wvmask','cloudmask',[Rlist{i},'_wvmask.mat']);
+%     cm=matfile(CloudMaskfile);
+%     hdr=cm.hdr;
+%     mask=cm.cloudmask;
+    sm=matfile(fullfile(basedir,subsetmasklist{i}));
+    hdr=sm.hdr;
+    fn=fieldnames(sm);
+    match=false;
+    j=1;
+    
+    while ~match && j<=length(fn)
+        out=regexp(fn{j},'.*mask','ONCE');
+        if ~isempty(out)
+           mask=sm.(fn{j});
+           match=true;
+        end
+        j=j+1;
+    end
+    RefMatrix=RasterRef2RefMat(hdr.RasterReference);
+    [x,y]=pixcenters(RefMatrix,hdr.RasterReference.RasterSize,...
+        'makegrid');
+    if i >= 6 %wv switches to 0 is in study area,
+        mask=~mask;
+    end
+    x=x(mask);
+    y=y(mask);
+    
+    [r,c]=map2pix(RefMatrix,x,y);
     subset=[min(r) max(r);min(c) max(c)];
     
     DustMaskfile=fullfile(basedir,'dustmask',fname);
@@ -58,11 +76,14 @@ for i=8:8
    
     out=run_spires_landsat(r0dir,rdir,demfile,...
         Ffile,shade,tolval,fsca_thresh,grain_thresh,dust_thresh,...
-        DustMaskfile,CCfile,...
-        WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset);
+        DustMaskfile,CCfile,WaterMaskfile,CloudMaskfile,fIcefile,...
+        el_cutoff,subset);
     
     fn=fieldnames(out);
     outname=fullfile(outdir, [Rlist{i} '.mat']);
+    if exist(outname,'file')
+        delete(outname);
+    end
     m=matfile(outname,'Writable',true);
     
     for j=1:length(fn)

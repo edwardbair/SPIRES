@@ -1,5 +1,5 @@
-function make_modis_video(infiles,target,pshape,topofile)
-%create reprojected MODIS video
+function make_spires_video(infiles,target,pshape,topofile)
+%create reprojected spires MODIS video
 %infiles - cell, N*1 list of h5 files to read
 %output struct from smooth_and_run_modis
 %w fields:
