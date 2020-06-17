@@ -162,8 +162,9 @@ fshade=o.fshade;
 ifsca=fsca_raw./(1-fshade);
 
 %viewable gap correction
-A.cc(isnan(A.cc))=0;
-ifsca=ifsca./(1-A.cc);
+% A.cc(isnan(A.cc))=0;
+% ifsca=ifsca./(1-A.cc);
+ifsca(A.cc>0 & ifsca>fsca_thresh)=1;
 
 % fice correction
 A.fice(isnan(A.fice))=0;

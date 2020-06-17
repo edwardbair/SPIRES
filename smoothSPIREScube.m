@@ -1,12 +1,9 @@
-function out=smoothSPIREScube(nameprefix,vars,divisor,dtype,outloc,matdates,...
+function out=smoothSPIREScube(nameprefix,outloc,matdates,...
     nPersistDry,nPersistSnow,mingrainradius,maxgrainradius,mindust,maxdust,...
     mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
     endconditions)
 %function to smooth cube after running through SPIRES
 % nameprefix - name prefix for outputs, e.g. Sierra
-% vars - cell, variable list from fill_and_run_modis
-% divisor - divisors for variables, divisors from fill_and_run_modis
-% dtype - datatype for each variable, datatype from fill_and_run_modis
 % outloc - output location, string
 % matdates - datenum vector for image days
 % nPersistDry: min # of consecutive days to trust a dry land retrieval,
@@ -32,9 +29,13 @@ function out=smoothSPIREScube(nameprefix,vars,divisor,dtype,outloc,matdates,...
 %fsca, grainradius, dust, and hdr (geographic info)
 
 %1.34 hr/yr for h08v05, 2017
-t1=tic;
+time1=tic;
 
 fprintf('reading %s...%s\n',datestr(matdates(1)),datestr(matdates(end)));
+%int vars
+vars={'fsca','fshade','grainradius','dust','weights','sensorZ'};
+divisor=[100 100 1 10 100 1];
+dtype={'uint8','uint8','uint16','uint16','uint8','uint8'};
 
 for i=1:length(matdates)
     dv=datevec(matdates(i));
@@ -77,23 +78,42 @@ smask=snowPersistenceFilter(tmask,nPersistSnow,1);
 out.fsca(~smask & ~dmask)=NaN;
 
 %fshade adj 
-t=out.fshade<1;
-out.fsca(t)=out.fsca(t)./(1-out.fshade(t));
+% t=out.fshade<1;
+% out.fsca(t)=out.fsca(t)./(1-out.fshade(t));
 
 %and viewable gap correction 
 
 %enlarge cc by pixelsize
-earthRadius = 6.371007181e+03;
-orbitHeight = 705;
-[ppl,ppt,~] = pixelSize(earthRadius,orbitHeight,1,out.sensorZ);
+% earthRadius = 6.371007181e+03;
+% orbitHeight = 705;
+% [ppl,ppt,~] = pixelSize(earthRadius,orbitHeight,1,out.sensorZ);
+% 
+% cc=cc.*ppl.*ppt;
+% cc(cc>1)=1;
 
-cc=cc.*ppl.*ppt;
-cc(cc>1)=1;
 cc(isnan(cc))=0;
-
 t=out.fsca==0;
-out.fsca=out.fsca./(1-cc);
-out.fsca(out.fsca>1)=1; %includes cc==1 case of Inf, which is any pos #/0
+% t1=out.fsca>fsca_thresh & cc>0;
+% out.fsca(t1)=1;
+% out.fsca=out.fsca./(1-cc);
+% out.fsca(out.fsca>1)=1; %includes cc==1 case of Inf, which is any pos #/0
+% out.fsca(t)=0;
+
+%White et al 2005, Figure 1ab, https://doi.org/10.1080/01431160500080626
+a=-0.67;
+b=0.089;
+cc_adj1=a.*cc+b;
+
+a=-0.79;
+b=0.074;
+cc_adj2=a.*cc+b;
+
+%negative indicates underestimate
+cc_adj=cc-min(cat(3,cc_adj1,cc_adj2),[],3);
+
+%combine cc and fshade adjustment
+out.fsca=out.fsca./(1-cc_adj-out.fshade);
+out.fsca(out.fsca>1 | out.fsca<0)=1;
 out.fsca(t)=0;
 
 %elevation filter
@@ -121,18 +141,19 @@ out.fsca=smoothDataCube(out.fsca,newweights,'mask',~mask,...
 out.fsca(out.fsca<fsca_thresh)=0;
 out.fsca(bigmask)=NaN;
 
-t0=out.fsca==0; %track zeros to prevent 0/0 = NaN
+% t0=out.fsca==0; %track zeros to prevent 0/0 = NaN
 
 %need to rep matrix for logical operation below
+fice(isnan(fice))=0;
 fice=repmat(fice,[1 1 size(out.fsca,3)]);
 % fice correction
-fice(isnan(fice))=0;
-out.fsca=out.fsca./(1-fice);
+
+% out.fsca=out.fsca./(1-fice);
 
 %set back to zero
-out.fsca(t0)=0;
+% out.fsca(t0)=0;
 %fix high values
-out.fsca(out.fsca>1)=1;
+% out.fsca(out.fsca>1)=1;
 
 %fix values below thresh to ice values
 t=out.fsca<fice;
@@ -156,10 +177,6 @@ fcube=dF<0;
 %bad grain sizes
 badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius;
 out.grainradius(badg)=NaN;
-
-%compute max value using sliding window
-% t=~isnan(out.grainradius);
-% out.grainradius(t)=movmax(out.grainradius(t),movfiltlength,3);
 
 % use weights
 newweights=out.weights;
@@ -231,8 +248,8 @@ for i=1:length(outvars)
     writeh5stcubes(fname,dS,out.hdr,out.matdates,member,Value);
 end
 
-t2=toc(t1);
-fprintf('completed in %5.2f hr\n',t2/60/60);
+time2=toc(time1);
+fprintf('completed in %5.2f hr\n',time2/60/60);
 
 end
 
