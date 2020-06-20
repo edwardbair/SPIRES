@@ -1,9 +1,9 @@
-% WY=2012;
-WY=2001:2019;
+WY=2017;
+% WY=2001:2019;
 
 for i=1:length(WY)
-   matdates=datenum([WY(i)-1 10 1]):datenum([WY(i) 9 30]);
-%  matdates=datenum([WY(i) 6 1]):datenum([WY(i) 6 20]);
+%    matdates=datenum([WY(i)-1 10 1]):datenum([WY(i) 9 30]);
+  matdates=datenum([WY(i) 8 1]):datenum([WY(i) 8 30]);
 %  fill_and_run_modis(tiles,matdates,...
 %         hdfbasedir,topodir,topofile,mask,R0,Ffile,shade,grain_thresh,dust_thresh,...
 %         dustmask,tolval,outloc,nameprefix);

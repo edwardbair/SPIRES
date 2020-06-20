@@ -58,8 +58,8 @@ for i=1:sz(4) %for each day
     thissolarZ=squeeze(solarZ(:,i));
     
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
-        (thisR(:,red_b)+thisR(:,swir_b));
-    t=NDSI > 0  & ~mask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
+         (thisR(:,red_b)+thisR(:,swir_b));
+    t=NDSI > -0.5  & ~mask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
     M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
     
     %keep track of indices
@@ -151,7 +151,7 @@ for i=1:sz(4) %for each day
     for j=1:length(outvars)
         out.(outvars{j})(t,i)=repxx(:,j);
         if strcmp(outvars{j}(1),'f') %set fsca/fshade to zero when NDSI<=0
-            tt=NDSI <= 0;
+            tt=NDSI <= -0.5;
             out.(outvars{j})(tt,i)=0;
         end
     end

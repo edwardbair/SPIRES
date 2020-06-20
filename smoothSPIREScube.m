@@ -37,6 +37,7 @@ vars={'fsca','fshade','grainradius','dust','weights','sensorZ'};
 divisor=[100 100 1 10 100 1];
 dtype={'uint8','uint8','uint16','uint16','uint8','uint8'};
 
+
 for i=1:length(matdates)
     dv=datevec(matdates(i));
     fname=fullfile(outloc,[nameprefix datestr(dv,'yyyymm') '.mat']);
@@ -135,7 +136,7 @@ fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
 out.fsca=smoothDataCube(out.fsca,newweights,'mask',~mask,...
-   'method','smoothingspline','SmoothingParam',0.1);
+   'method','smoothingspline','SmoothingParam',[]);
 
 %get some small fsca values from smoothing - set to zero
 out.fsca(out.fsca<fsca_thresh)=0;
