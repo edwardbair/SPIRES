@@ -53,8 +53,7 @@ for i=1:size(dv,1)
         end
     end
     doy_start=datenum(dv(i,:))-datenum(dv(1,:))+1;
-%     doy_end=doy_start+eomday(dv(i,1),dv(i,2))-1;
-    doy_end=doy_start+size(m.fsca,3)-1;
+    doy_end=doy_start+eomday(dv(i,1),dv(i,2))-1;
 %     ind=datenum(dv)-datenum([dv(1:2) 1])+1;%1st day of month
 
     %convert to single and scale
@@ -125,7 +124,7 @@ fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
 out.fsca=smoothDataCube(out.fsca,newweights,'mask',~mask,...
-   'method','smoothingspline','SmoothingParam',0.01);
+   'method','smoothingspline','SmoothingParam',[]);
 
 %get some small fsca values from smoothing - set to zero
 out.fsca(out.fsca<fsca_thresh)=0;

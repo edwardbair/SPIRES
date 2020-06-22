@@ -96,9 +96,8 @@ for i=1:length(r0dates)
     R0(r,c,:)=sr;
 end
 
-R0=rasterReprojection(R0,BigR,mstruct,hdr.ProjectionStructure,...
-    'rasterref',hdr.RasterReference);
-R0(isnan(R0))=0;
+R0=rR0,BigR,mstruct,...
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
 
 
 parfor i=1:length(matdates)
@@ -162,7 +161,6 @@ parfor i=1:length(matdates)
                 
             %get all band reflectance
             sr=GetMOD09GA(f,'allbands');
-            sr(isnan(sr))=0;
             
             %create cloud mask
             S=GetMOD09GA(f,'state');

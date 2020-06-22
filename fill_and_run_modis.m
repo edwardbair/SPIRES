@@ -1,5 +1,5 @@
-function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,matdates,...
-    hdfbasedir,topodir,topofile,mask,R0,Ffile,shade,grain_thresh,dust_thresh,...
+function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdates,...
+    hdfbasedir,topodir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,...
     dustmask,tolval,outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
@@ -8,6 +8,8 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,matdates,...
 % if tile is a cell vector, assumption is made to mosaic multiple tiles
 % together then crop/reproject to topofile. watermask, R0,& dustmask will
 % all be assumed to match topofile hdr for spatial info
+% r0dates - matesdates for background each tile image, e.g.
+% datenum([2015 9 25; 2015 9 25; 2015 9 25]);
 % matdates - matdates for cube
 % hdfbasedir - where the MOD09GA HDF files live
 % must have sub directories that correspond to entries in tile, e.g. h08v04
@@ -60,10 +62,11 @@ m=unique(dv(:,2),'stable');
 for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
-    [R,~,solarZ,sensorZ,~,weights]=...
-    fillMODIScube(tiles,rundates,hdfbasedir,topodir,topofile,mask,swir_b);
+    [R,R0,~,solarZ,sensorZ,~,weights]=...
+    fillMODIScube(tiles,r0dates,rundates,hdfbasedir,topodir,topofile,swir_b);
     out=run_spires(R0,R,solarZ,Ffile,mask,shade,grain_thresh,dust_thresh,...
         dustmask,tolval,hdr,red_b,swir_b);
+
     out.weights=weights; %put weights into output struct
     out.sensorZ=sensorZ; %put sensor zenith into output struct
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);

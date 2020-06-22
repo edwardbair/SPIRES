@@ -60,7 +60,9 @@ for i=1:sz(4) %for each day
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
          (thisR(:,red_b)+thisR(:,swir_b));
     t=NDSI > -0.5  & ~mask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
-    M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
+%     t=~mask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
+    
+M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
     
     %keep track of indices
     Rind=1:sz(3);
@@ -140,7 +142,8 @@ for i=1:sz(4) %for each day
     %create a list of indices
     %and fill matrices corresponding to NDSI > 0 & ~water
     %can't use parfor for this
-    repxx=zeros(size(M,1),length(outvars));
+%     repxx=zeros(size(M,1),length(outvars));
+    repxx=NaN(size(M,1),length(outvars));
     for j=1:size(temp,1) % the unique indices
         idx=im{j}; %indices for each unique val
         for k=1:length(outvars)
