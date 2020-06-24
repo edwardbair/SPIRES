@@ -1,18 +1,16 @@
-% WY=2013:2019;
-WY=2017;
-% WY=2001:2019;
+WY=2013:2019;
 r0dates=datenum([2016 9 25; 2016 9 25; 2016 9 25]);
 
 for i=1:length(WY)
-%    matdates=datenum([WY(i)-1 10 1]):datenum([WY(i) 9 30]);
-    matdates=datenum([WY(i) 8 1]):datenum([WY(i) 8 31]);
+    matdates=datenum([WY(i)-1 10 1]):datenum([WY(i) 9 30]);
+%     matdates=datenum([WY(i) 6 1]):datenum([WY(i) 10 31]);
 
     fill_and_run_modis(tiles,r0dates,matdates,...
     hdfbasedir,topodir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,...
     dustmask,tolval,outloc,nameprefix);
 
     out=smoothSPIREScube(nameprefix,outloc,matdates,...
-    nPersistDry,nPersistSnow,mingrainradius,maxgrainradius,mindust,maxdust,...
+    windowSize,windowThresh,mingrainradius,maxgrainradius,mindust,maxdust,...
     mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
     endconditions);
 

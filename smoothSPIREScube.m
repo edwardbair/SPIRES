@@ -1,5 +1,5 @@
 function out=smoothSPIREScube(nameprefix,outloc,matdates,...
-    nPersistDry,nPersistSnow,mingrainradius,maxgrainradius,mindust,maxdust,...
+    windowSize,windowThresh,mingrainradius,maxgrainradius,mindust,maxdust,...
     mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
     endconditions)
 %function to smooth cube after running through SPIRES
@@ -74,17 +74,26 @@ fprintf('finished reading %s...%s\n',datestr(matdates(1)),...
 out.fsca_raw=out.fsca;
 
 %create trust mask for zero fsca values, skipped or missing is NaN
-tmask=out.fsca<fsca_thresh & out.weights>0;
-dmask=snowPersistenceFilter(tmask,nPersistDry,1);
+% tmask=out.fsca<fsca_thresh & out.weights>0;
+% dmask=snowPersistenceFilter(tmask,nPersistDry,1);
 
-out.fsca(dmask)=0;
+% out.fsca(dmask)=0;
+%bad grain sizes
 
 %create trust mask for non-zero snow values
-tmask=out.fsca>fsca_thresh;
-smask=snowPersistenceFilter(tmask,nPersistSnow,1);
+% smask=snowPersistenceFilter(tmask,nPersistSnow,1);
+% out.fsca(~smask) = NaN;
 
-out.fsca(~smask & ~dmask)=NaN;
+tmask=out.fsca>fsca_thresh & out.grainradius > mingrainradius;
+tmask=movingPersist(tmask,windowSize,windowThresh);
+out.fsca(~tmask)=0;
 
+
+% gmask=out.grainradius==30;
+% out.fsca(gmask)=NaN;
+
+% out.fsca(drymask)=0;
+% out.fsca(~smask & ~dmask)=NaN;
 
 cc(isnan(cc))=0;
 t=out.fsca==0;
@@ -101,8 +110,12 @@ cc_adj2=a.*cc+b;
 %negative indicates underestimate
 cc_adj=cc-min(cat(3,cc_adj1,cc_adj2),[],3);
 
+% 
+fice(isnan(fice))=0;
+fice=repmat(fice,[1 1 size(out.fsca,3)]);
+
 %combine cc and fshade adjustment
-out.fsca=out.fsca./(1-cc_adj-out.fshade);
+out.fsca=out.fsca./(1-cc_adj-out.fshade-fice);
 out.fsca(out.fsca>1 | out.fsca<0)=1;
 out.fsca(t)=0;
 
@@ -117,6 +130,14 @@ bigmask=repmat(mask,[1 1 size(out.fsca,3)]);
 out.fsca(Zmask | bigmask) = 0;
 
 newweights=out.weights;
+
+% earthRadius = 6.371007181e3;                                                                                                                                   
+% orbitHeight = 705;                                                                                                                                              
+% [ppl,ppt,~] = pixelSize(earthRadius,orbitHeight,1,out.sensorZ);
+% 
+% w = 1./(ppl.*ppt);
+
+% newweights=w;
 newweights(isnan(out.fsca))=0;
 
 %fill in and smooth NaNs
@@ -125,7 +146,7 @@ fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
 out.fsca=smoothDataCube(out.fsca,newweights,'mask',~mask,...
-   'method','smoothingspline','SmoothingParam',0.01);
+   'method','smoothingspline','SmoothingParam',0.1);
 
 %get some small fsca values from smoothing - set to zero
 out.fsca(out.fsca<fsca_thresh)=0;
@@ -134,9 +155,6 @@ out.fsca(bigmask)=NaN;
 % t0=out.fsca==0; %track zeros to prevent 0/0 = NaN
 
 %need to rep matrix for logical operation below
-fice(isnan(fice))=0;
-fice=repmat(fice,[1 1 size(out.fsca,3)]);
-% fice correction
 
 % out.fsca=out.fsca./(1-fice);
 
