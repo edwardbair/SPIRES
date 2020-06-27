@@ -110,12 +110,9 @@ cc_adj2=a.*cc+b;
 %negative indicates underestimate
 cc_adj=cc-min(cat(3,cc_adj1,cc_adj2),[],3);
 % cc_adj=cc_adj./cosd(out.sensorZ);
-% Xin et al, Figure 3, linear fit to St Louis Creek stand,
-% doi:10.1016/j.rse.2011.10.029
-dcdz=0.0097; %increase in canopy cover w/ sensor zenith angle
-cc_adj=cc_adj+out.sensorZ*dcdz;
+cc=cc_adj+
 
-
+% 
 fice(isnan(fice))=0;
 fice=repmat(fice,[1 1 size(out.fsca,3)]);
 
