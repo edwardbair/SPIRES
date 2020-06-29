@@ -140,8 +140,8 @@ for ii=1:size(infiles,1)
             end
             x.(vars{j})(isnan(x.(vars{j})))=0;
             x.(vars{j})(~mask)=NaN;
-            axes(ha(j));
-            imagesc(x.(vars{j}),'AlphaData',double(mask));
+            axis(ha(j));
+            imagesc(ha(j),x.(vars{j}),'AlphaData',double(mask));
             if j==1
 
             c1.Label.String=['fsca ' datestr(in.matdates(i))];

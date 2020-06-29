@@ -93,7 +93,7 @@ M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
         pxR0=c(j,R0ind);
         sZ=c(j,sZind);
         o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
-        % fsca too low for grain size
+        % fsca too low & fshade too high for grain size
         if o.x(1) < grain_thresh
            o.x(3)=NaN;
         end

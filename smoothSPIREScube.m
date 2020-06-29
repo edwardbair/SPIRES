@@ -99,22 +99,26 @@ cc(isnan(cc))=0;
 t=out.fsca==0;
 
 %White et al 2005, Figure 1ab, https://doi.org/10.1080/01431160500080626
-a=-0.67;
-b=0.089;
-cc_adj1=a.*cc+b;
+% a=-0.67;
+% b=0.089;
+% cc_adj1=a.*cc+b;
 
-a=-0.79;
-b=0.074;
-cc_adj2=a.*cc+b;
+% a=-0.79;
+% b=0.074;
+% cc_adj2=a.*cc+b;
 
 %negative indicates underestimate
-cc_adj=cc-min(cat(3,cc_adj1,cc_adj2),[],3);
+% cc_adj=cc-min(cat(3,cc_adj1,cc_adj2),[],3);
+% cc_adj=cc-cc_adj1;
 % cc_adj=cc_adj./cosd(out.sensorZ);
 % Xin et al, Figure 3, linear fit to St Louis Creek stand,
 % doi:10.1016/j.rse.2011.10.029
-dcdz=0.0097; %increase in canopy cover w/ sensor zenith angle
-cc_adj=cc_adj+out.sensorZ*dcdz;
+% Liu et al 2004, Figure 6, doi: 10.1002/hyp.5802
+% dcdz=0.0097; %increase in canopy cover w/ sensor zenith angle
+% cc_adj=cc_adj+out.sensorZ*dcdz;
 
+%use GO model, 
+cc_adj=1-GOvgf(cc,0,0,out.sensorZ,0,4);
 
 fice(isnan(fice))=0;
 fice=repmat(fice,[1 1 size(out.fsca,3)]);
