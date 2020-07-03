@@ -1,5 +1,5 @@
-function out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
-    grain_thresh,dust_thresh,dustmask,tolval,hdr,red_b,swir_b)
+function out=run_spires(R0,R,solarZ,Ffile,mask,dustmask,shade,...
+    grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b,solarZthresh)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -13,6 +13,7 @@ function out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
 % with inputs: grain radius (um), dust (ppmw), solar zenith angle (deg),
 % band # (not necessarily in order of wavelength)
 % mask: logical mask (MxN), true for areas to NOT process
+% dustmask: logical mask, true for areas where dust can be est.
 % shade endmeber, scalar or vector, length of # bands
 % grain_thresh: grain size threshold fsca value, e.g. 0.5
 % dust_thresh: dust size threshold fsca value, e.g. 0.95
@@ -22,6 +23,7 @@ function out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
 % hdr - header struct w/ map info, see GetCoordinateInfo.m
 % red_b - red band, e.g. 3 for MODIS and L8
 % swir_b - SWIR band, e.g. 6 for MODIS and L8
+% min solar zenith threshold
 
 %output:
 %   out : struct w fields
@@ -60,8 +62,7 @@ for i=1:sz(4) %for each day
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
          (thisR(:,red_b)+thisR(:,swir_b));
     t=NDSI > -0.5  & ~mask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
-%     t=~mask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
-    
+  
 M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
     
     %keep track of indices
@@ -70,7 +71,7 @@ M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
     sZind=R0ind(end)+1;
     dmind=sZind(end)+1;
     
-    M=M(t,:); % only values w/ > 0 NDSI and no water
+    M=M(t,:); 
     XM=X(t); % X coordinates for M
     YM=Y(t); % Y coordinates for M
     [c,im,~]=uniquetol(M,tolval,'ByRows',true,'DataScale',1,...
@@ -91,54 +92,88 @@ M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
         thisdm=c(j,dmind);
         pxR=c(j,Rind);
         pxR0=c(j,R0ind);
-        sZ=c(j,sZind);
-        o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
-        % fsca too low & fshade too high for grain size
-        if o.x(1) < grain_thresh
-           o.x(3)=NaN;
-        end
-        % fsca too low for dust
-        if o.x(1) < dust_thresh || ~thisdm
-           o.x(4)=NaN;
-        end
+        sZ=c(j,sZind);                      
+        o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,0,1,[],[]);
+        o2=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
+        o.x(4)=o2.x(4);
         temp(j,:)=o.x;
     end
+%now spatially interpolate 
+% g=temp(:,3);
+% d=temp(:,4);
+% tt_grain=~isnan(g);
+% tt_dust=~isnan(d);
+% 
+% if nnz(tt_dust) > 0 && nnz(tt_grain) > 0
+% GD=NaN(size(c,1),2);
+% sgrain=g(tt_grain); %solved grain size values
+% sdust=d(tt_dust); %solved dust values
+% XCYCgrain=[XC(tt_grain),YC(tt_grain)];
+% XCYCdust=[XC(tt_dust),YC(tt_dust)];
+% 
+%      parfor j=1:size(c,1)
+%         if ~tt_grain(j)
+%             dist_grain=pdist2(XCYCgrain,[XC(j),YC(j)]);
+%             w_grain=1./dist_grain;
+%             G=(sum(w_grain.*sgrain))./(sum(w_grain));
+%         else
+%             G=g(j);
+%         end
+% 
+%         if ~tt_dust(j)
+%             dist_dust=pdist2(XCYCdust,[XC(j),YC(j)]);
+%             w_dust=1./dist_dust;
+%             D=(sum(w_dust.*sdust))./(sum(w_dust));
+%         else
+%             D=d(j);
+%         end
+%         GD(j,:)=[G D]; 
+%      end
+%      temp(:,3:4)=GD; 
+% end
+
+
+
     %second pass, use interpolated dust/grain sizes
-    g=temp(:,3);
-    d=temp(:,4);
-    tt_grain=~isnan(g);
-    tt_dust=~isnan(d);
-    if nnz(tt_grain) > 0 && nnz(tt_dust) > 0 % if there are solved dust/grain values
-        sgrain=g(tt_grain); %solved grain size values
-        sdust=d(tt_dust); %solved dust values
-        XCYCgrain=[XC(tt_grain),YC(tt_grain)];
-        XCYCdust=[XC(tt_dust),YC(tt_dust)];
-        parfor j=1:size(c,1)
-            pxR=c(j,Rind);
-            pxR0=c(j,R0ind);
-            sZ=c(j,sZind);
-            %thisdm=c(j,dmind);
-            if ~tt_grain(j)
-                dist_grain=pdist2(XCYCgrain,[XC(j),YC(j)]);
-                w_grain=1./dist_grain;
-                G=(sum(w_grain.*sgrain))./(sum(w_grain));
-            else
-                G=g(j);
-            end
-            
-            if ~tt_dust(j)
-                dist_dust=pdist2(XCYCdust,[XC(j),YC(j)]);
-                w_dust=1./dist_dust;
-                D=(sum(w_dust.*sdust))./(sum(w_dust));
-            else
-                D=d(j);
-            end
-            %inverse distance weighted average
-            o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,D,G);
-            sol=o.x; %fsca,shade,grain radius,dust
-            temp(j,:)=sol;
-        end
-    end
+%     g=temp(:,3);
+%     d=temp(:,4);
+%     tt_grain=~isnan(g);
+%     tt_dust=~isnan(d);
+%     if nnz(tt_grain) > 0 && nnz(tt_dust) > 0 % if there are solved dust/grain values
+%         sgrain=g(tt_grain); %solved grain size values
+%         sdust=d(tt_dust); %solved dust values
+%         XCYCgrain=[XC(tt_grain),YC(tt_grain)];
+%         XCYCdust=[XC(tt_dust),YC(tt_dust)];
+%         parfor j=1:size(c,1)
+%             pxR=c(j,Rind);
+%             pxR0=c(j,R0ind);
+%             sZ=c(j,sZind);
+% %             thisdm=c(j,dmind);
+%             if ~tt_grain(j)
+%                 dist_grain=pdist2(XCYCgrain,[XC(j),YC(j)]);
+%                 w_grain=1./dist_grain;
+%                 G=(sum(w_grain.*sgrain))./(sum(w_grain));
+%             else
+%                 G=g(j);
+%             end
+%             
+%             if ~tt_dust(j)
+%                 dist_dust=pdist2(XCYCdust,[XC(j),YC(j)]);
+%                 w_dust=1./dist_dust;
+%                 D=(sum(w_dust.*sdust))./(sum(w_dust));
+%             else
+%                 D=d(j);
+%             end
+%             %inverse distance weighted average
+%             o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,D,G);
+% %             if o.stats <= 0.05
+%                 %fsca,shade,grain radius,dust
+%                 temp(j,:)=o.x;
+% %             else
+% %                 temp(j,:)=NaN;
+% %             end
+%         end
+%     end
     %create a list of indices
     %and fill matrices corresponding to NDSI > 0 & ~water
     %can't use parfor for this
@@ -153,9 +188,11 @@ M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
     %now fill out all pixels
     for j=1:length(outvars)
         out.(outvars{j})(t,i)=repxx(:,j);
-        if strcmp(outvars{j}(1),'f') %set fsca/fshade to zero when NDSI<=0
-            tt=NDSI <= -0.5;
+        tt=NDSI <= -0.5;
+        if strcmp(outvars{j}(1),'f') %set fsca/fshade to zero
             out.(outvars{j})(tt,i)=0;
+        else
+            out.(outvars{j})(tt,i)=NaN;%grain & dust to NaN
         end
     end
     t2=toc(t1);

@@ -1,6 +1,6 @@
-function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdates,...
-    hdfbasedir,topodir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,...
-    dustmask,tolval,outloc,nameprefix)
+function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,...
+    matdates,hdfbasedir,topofile,topodir,mask,dustmask,Ffile,shade,grain_thresh,...
+    dust_thresh,tolval,outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -13,11 +13,10 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdate
 % matdates - matdates for cube
 % hdfbasedir - where the MOD09GA HDF files live
 % must have sub directories that correspond to entries in tile, e.g. h08v04
-% topodir - directory for h5 topo files from from consolidateTopography, 
-% part of TopoHorizon that contain topofiles for each tile in tiles, 
-% e.g. h09v05dem_463m_Topography.h5
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
-% watermask- logical mask w/ ones for pixels to exclude (like water)
+% topodir - directory for topofiles for each tile
+% mask- logical mask w/ ones for pixels to exclude (like water)
+% dustmask - logical mask, true for areas where dust can be est.
 % R0 - background image (MxNxb). Recommend using time-spaced smoothed
 % cube from a month with minimum fsca and clouds, like August or September,
 % then taking minimum of reflectance for each band (b)
@@ -27,8 +26,6 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdate
 % shade endmeber, scalar or vector, length of # bands
 % grain_thresh: min fsca value for grain size retrievals , e.g. 0.50
 % dust_thresh: min fsca value for dust retrievals, e.g. 0.95
-% dustmask: mask of loctations (MxN) where dust can be retireved (1) or not
-% (0)
 % tol val: threshold for uniquetol spectra, higher runs faster, 0 runs all pixesl
 % scalar e.g. 0.05
 % outloc: path to write output
@@ -59,13 +56,14 @@ dv=datevec(matdates);
 m=unique(dv(:,2),'stable');
 [~,hdr]=GetTopography(topofile,'elevation');
 
+
 for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
     [R,R0,~,solarZ,sensorZ,~,weights]=...
-    fillMODIScube(tiles,r0dates,rundates,hdfbasedir,topodir,topofile,swir_b);
-    out=run_spires(R0,R,solarZ,Ffile,mask,shade,grain_thresh,dust_thresh,...
-        dustmask,tolval,hdr,red_b,swir_b);
+    fillMODIScube(tiles,r0dates,rundates,hdfbasedir,topofile,topodir,swir_b);
+    out=run_spires(R0,R,solarZ,Ffile,mask,dustmask,shade,grain_thresh,dust_thresh,...
+        tolval,hdr,red_b,swir_b,solarZthresh);
 
     out.weights=weights; %put weights into output struct
     out.sensorZ=sensorZ; %put sensor zenith into output struct

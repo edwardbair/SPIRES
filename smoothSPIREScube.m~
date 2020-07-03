@@ -133,6 +133,7 @@ out.dust > maxdust | abs(out.dust-out.grainradius) > 200;
 %grain sizes too small or large to be trusted
 %bad grain sizes
 out.grainradius(badg)=NaN;
+out.dust
 
 % use weights
 newweights=out.weights;

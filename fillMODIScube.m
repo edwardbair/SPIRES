@@ -1,5 +1,5 @@
 function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
-    fillMODIScube(tiles,r0dates,matdates,hdfbasedir,topodir,topofile,swir_b)
+    fillMODIScube(tiles,r0dates,matdates,hdfbasedir,topofile,topodir,swir_b)
 %create gap filled (e.g. cloud-free) MOD09GA surface
 %reflectance
 
@@ -10,12 +10,10 @@ function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
 %matdates - matdates to process
 %hdfbasedir - where the MOD09GA HDF files live must have sub directories 
 % that correspond to entries in tile, e.g. 'h08v04'
-%topodir - directory for h5 topo files from from consolidateTopography, 
-%part of TopoHorizon that contain topofiles for each tile in tiles, 
-%e.g. h09v05dem_463m_Topography.h5
 %topofile - h5 target topo file name. This topography file contains the target
 %geographic information that everything will be tiled and
 %cropped/reprojected to
+%topodir - directory for topofiles for each tile
 %swir_b - swir band, scalar
 %output:
 %filledCube: gap filled (cloud free) cube of MOD09GA values
@@ -75,6 +73,8 @@ pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
 %create R0 based on r0dates
 R0=zeros([sz0(1) sz0(2) sz0(3)]);
+R0SZ=zeros([sz(1) sz(2)]);
+R0SA=zeros([sz(1) sz(2)]);
 
 for i=1:length(r0dates)
     tile=tiles{i};
@@ -94,12 +94,33 @@ for i=1:length(r0dates)
     %get all band reflectance
     sr=GetMOD09GA(f,'allbands');
     R0(r,c,:)=sr;
+    
+    x=single(GetMOD09GA(f,'SolarZenith'));
+    if any(isnan(x(:)))
+        x = inpaint_nans(double(x),4);
+    end
+    x=imresize(x,tsiz(i,:));
+    R0SZ(r,c)=imresize(x,tsiz(i,:));
+
+
+    x=single(GetMOD09GA(f,'SolarAzimuth'));
+    if any(isnan(x(:)))
+        x = inpaint_nans(double(x),4);
+    end
+    x=imresize(x,tsiz(i,:));
+    R0SA(r,c)=imresize(x,tsiz(i,:));
 end
 
 R0=rasterReprojection(R0,BigR,mstruct,hdr.ProjectionStructure,...
     'rasterref',hdr.RasterReference);
 R0(isnan(R0))=0;
 
+R0SA=rasterReprojection(R0SA,BigR,mstruct,hdr.ProjectionStructure,...
+    'rasterref',hdr.RasterReference);
+R0SZ=rasterReprojection(R0SZ,BigR,mstruct,hdr.ProjectionStructure,...
+    'rasterref',hdr.RasterReference);
+
+% R0=normalizeReflectance(R0,Slope,Aspect,R0SZ,R0SA,'rotation');
 
 parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
@@ -135,6 +156,7 @@ parfor i=1:length(matdates)
             f=fullfile(hdfbasedir,tile,d{m});
             
             [~,aWeights,~] = weightMOD09(f,topofile);
+%             [~,aWeights,~] = weightMOD09(f);
             pxweights_(r,c)= aWeights;
                         
 
@@ -163,6 +185,7 @@ parfor i=1:length(matdates)
             %get all band reflectance
             sr=GetMOD09GA(f,'allbands');
             sr(isnan(sr))=0;
+%           sr=scaleMultiBandCube(sr)
             
             %create cloud mask
             S=GetMOD09GA(f,'state');
@@ -197,9 +220,8 @@ parfor i=1:length(matdates)
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
 
     %correct reflectance
-%     refl_c_=normalizeReflectance(refl_,Slope,Aspect,SolarZenith_,...
-%         SolarAzimuth_);
-%     refl(:,:,:,i)=refl_c_;
+%     refl_=normalizeReflectance(refl_,Slope,Aspect,SolarZenith_,...
+%         SolarAzimuth_,'rotation');
     refl(:,:,:,i)=refl_;
     SolarZenith(:,:,i)=SolarZenith_;
     SensorZenith(:,:,i)=SensorZenith_;
@@ -208,43 +230,4 @@ parfor i=1:length(matdates)
 end
 
 filledCube=refl;
-
-% sz=size(refl);
-% filledCube=NaN(sz);
-% mvec=reshape(mask,[sz(1)*sz(2) 1]);
-
-% for i=1:size(refl,3) % for each band
-%     tic;
-%     bandcube=squeeze(refl(:,:,i,:));
-%     bandcube(cloudmask)=NaN; %set all the clouds to NaN
-%     %fill datacube
-%     vec=reshape(bandcube,[sz(1)*sz(2) sz(4)])'; %col major (days x pixels)
-%     parfor j=1:size(vec,2)
-%         if ~mvec(j)
-%             v=vec(:,j)
-%             t=isnan(v);
-%             if nnz(~t) >= 2
-%                 %interpolate
-%                 v(t)=interp1(matdates(~t),v(~t),matdates(t));
-%                 %extrapolate
-%                 tt=isnan(v);
-%                 if any(tt)
-%                     v(tt)=interp1(matdates(~tt),v(~tt),matdates(tt),...
-%                         'nearest','extrap');
-%                 end
-%                 vec(:,j)=v;
-%             end
-%         end
-%     end
-%     XX=reshape(vec',[sz(1) sz(2) sz(4)]);
-% 
-%     parfor j=1:size(XX,3)
-%         if any(isnan(XX(:,:,j)) & ~mask,'all') %fill any remaining NaNs 
-%             %that could  not be temporally interpolated spatially
-%              XX(:,:,j)=inpaint_nans(double(XX(:,:,j)),4);
-%         end
-%     end
-%     filledCube(:,:,i,:)=XX;
-%     t2=toc;
-%     fprintf('filled band:%i in %g min\n',i,t2/60);
-% end
+end

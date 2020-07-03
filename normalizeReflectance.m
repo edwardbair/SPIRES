@@ -31,10 +31,7 @@ switch model
     %fix negative values
     Rc(Rc<0)=0;
     % scale spectra with max > 1 by max
-    mx=max(Rc,[],3);
-    t=any(Rc>1,3);
-    mx(~t)=1;
-    Rc=Rc./mx;
+    Rc=scaleMultiBandCube(Rc);
     case 'rotation'
         Rc=NaN(size(R));
         sz=size(Rc);
@@ -45,7 +42,7 @@ switch model
             A=[ic(:) ones(size(ic(:)))];
             t=~isnan(ic(:)) & ~isnan(B);
             x=A(t,:)\B(t);
-            y=B-x(1).*(ic(:)-cosd(solarZ));
+            y=B-x(1).*(ic(:)-cosd(solarZ(:)));
             y(y<0)=0;
             y(y>1)=1;
             Rc(:,i)=y;
