@@ -93,7 +93,7 @@ for j=1:length(vars)
             caxis([0 0.4]);
         else
             c3.Label.String='dust conc, ppmw';
-            caxis([0 500]);
+            caxis([0 1000]);
         end
         c3.Label.Color=[1 1 1];
      elseif j==4

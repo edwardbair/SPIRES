@@ -1,5 +1,5 @@
 function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
-    fillMODIScube(tiles,r0dates,matdates,hdfbasedir,topofile,topodir,swir_b)
+    fillMODIScube(tiles,r0dates,matdates,hdfbasedir,swir_b,hdr)
 %create gap filled (e.g. cloud-free) MOD09GA surface
 %reflectance
 
@@ -13,7 +13,6 @@ function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
 %topofile - h5 target topo file name. This topography file contains the target
 %geographic information that everything will be tiled and
 %cropped/reprojected to
-%topodir - directory for topofiles for each tile
 %swir_b - swir band, scalar
 %output:
 %filledCube: gap filled (cloud free) cube of MOD09GA values
@@ -23,7 +22,7 @@ function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
 %SensorZenith: sensor zenith angles for cube
 %cloudmask: cloudmask cube, logical
 %pxweights: weight cube for each pixel (all bands together), 0-1
-
+%hdr- geog hdr for output
 nbands=7;
 % mask as cloud if swir band (6) is > than
 swir_cloud_thresh=0.2;
@@ -58,10 +57,6 @@ sBig=map2pix(BigR,xy);
 sBig=round(sBig);
 
 sz=[sBig nbands];
-% sunnames={'SolarZenith','SolarAzimuth'};
-
-[Slope,hdr]=GetTopography(topofile,'slope');
-Aspect=GetTopography(topofile,'aspect');
 
 %allocate 3 & 4D cubes with measurements for all days
 sz0=[hdr.RasterReference.RasterSize nbands length(matdates)];
@@ -115,13 +110,6 @@ R0=rasterReprojection(R0,BigR,mstruct,hdr.ProjectionStructure,...
     'rasterref',hdr.RasterReference);
 R0(isnan(R0))=0;
 
-R0SA=rasterReprojection(R0SA,BigR,mstruct,hdr.ProjectionStructure,...
-    'rasterref',hdr.RasterReference);
-R0SZ=rasterReprojection(R0SZ,BigR,mstruct,hdr.ProjectionStructure,...
-    'rasterref',hdr.RasterReference);
-
-% R0=normalizeReflectance(R0,Slope,Aspect,R0SZ,R0SA,'rotation');
-
 parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     %allocate daily cubes
@@ -134,12 +122,6 @@ parfor i=1:length(matdates)
     %load up each tile
     for k=1:length(tiles)
         tile=tiles{k};
-        
-        %get topofile for each tile
-        d=dir(fullfile(topodir,['*' tile '*.h5']));
-        assert(~isempty(d),'%s empty\n',topodir);
-        topofile=fullfile(topodir,d.name);
-        
         %get full directory listing for tile
         d=dir(fullfile(hdfbasedir,tile,['*.' tile '.*.hdf']));
         d=struct2cell(d);
@@ -154,11 +136,8 @@ parfor i=1:length(matdates)
             r=round(r);
             c=round(c);
             f=fullfile(hdfbasedir,tile,d{m});
-            
-            [~,aWeights,~] = weightMOD09(f,topofile);
-%             [~,aWeights,~] = weightMOD09(f);
+            [~,aWeights,~] = weightMOD09(f);
             pxweights_(r,c)= aWeights;
-                        
 
                 x=single(GetMOD09GA(f,'SolarZenith'));
                 if any(isnan(x(:)))
@@ -185,7 +164,6 @@ parfor i=1:length(matdates)
             %get all band reflectance
             sr=GetMOD09GA(f,'allbands');
             sr(isnan(sr))=0;
-%           sr=scaleMultiBandCube(sr)
             
             %create cloud mask
             S=GetMOD09GA(f,'state');
@@ -214,14 +192,9 @@ parfor i=1:length(matdates)
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
        SensorZenith_=rasterReprojection(SensorZenith_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference); 
-       SolarAzimuth_=rasterReprojection(SolarAzimuth_,BigR,mstruct,...
-            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
        pxweights_=rasterReprojection(pxweights_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
 
-    %correct reflectance
-%     refl_=normalizeReflectance(refl_,Slope,Aspect,SolarZenith_,...
-%         SolarAzimuth_,'rotation');
     refl(:,:,:,i)=refl_;
     SolarZenith(:,:,i)=SolarZenith_;
     SensorZenith(:,:,i)=SensorZenith_;

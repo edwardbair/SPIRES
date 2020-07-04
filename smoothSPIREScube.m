@@ -1,16 +1,14 @@
 function out=smoothSPIREScube(nameprefix,outloc,matdates,...
     windowSize,windowThresh,mingrainradius,maxgrainradius,mindust,maxdust,...
-    mask,topofile,el_cutoff,fsca_thresh,cc,fice,...
-    endconditions,solarZdust)
+    mask,topofile,el_cutoff,fsca_thresh,cc,fice,endconditions,solarZdust,...
+    dust_grain_thresh)
 %function to smooth cube after running through SPIRES
 % nameprefix - name prefix for outputs, e.g. Sierra
 % outloc - output location, string
 % matdates - datenum vector for image days
-% nPersistDry: min # of consecutive days to trust a dry land retrieval,
-% e.g. 4
-% nPersistSnow: min # of consectuve days to trust a snow covered
-% retreival,e.g. 8, remember that these persistence filters are performed 
-% on cloud (and other gap) filled estimates
+% windowSize: search window size for moving persistence filter, e.g. 45
+% windowThresh: threshold number of days w/ fsca in windows to avoid being
+% zeroed
 % mingrainradius: min believable grain radius, um, e.g. 100 um
 % maxgrainradius: max believable grain radius, e.g. 1100 um
 % mindust: min dust content, e.g. 12 um
@@ -25,6 +23,8 @@ function out=smoothSPIREScube(nameprefix,outloc,matdates,...
 % endcondition - string, end condition for splines for dust and grain size, 
 % e.g. 'estimate' or 'periodic', see slmset.m
 % max solar zenith for dust estimates, deg, e.g. 35
+% dust_grain_thresh - threshold fsca for dust/grain retrievals, below gets 
+% nearly zero weight, e.g. 0.2
 
 %output: struct out w/ fields
 %fsca, grainradius, dust, and hdr (geographic info)
@@ -128,7 +128,7 @@ fprintf('smoothing grain radius %s...%s\n',datestr(matdates(1)),...
 anyfsca=any(out.fsca,3);
 
 badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius | ...
-out.dust > maxdust | abs(out.dust-out.grainradius) > 200;
+out.dust > maxdust ;
 
 %grain sizes too small or large to be trusted
 %bad grain sizes
@@ -138,7 +138,7 @@ out.grainradius(badg)=NaN;
 newweights=out.weights;
 newweights(isnan(out.grainradius) | out.fsca==0)=0;
 %set low weight for low raw fsca
-newweights(out.fsca_raw<0.2)=0.01;
+newweights(out.fsca_raw<dust_grain_thresh)=0.01;
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
     'method','slm','knots',-3,'envelope','supremum','endconditions',endconditions);
@@ -164,7 +164,7 @@ mu0=sunang(lat,lon,declin,solar_lon);
 
 start=find(mu0>cosd(solarZdust),1,'first');
 finish=find(mu0>cosd(solarZdust),1,'last');
-t=mu0 < cosd(solarZdust);
+t=mu0 < cosd(solarZdust) ;
 out.dust(:,:,t)=0; %assume its clean if you cant see it
 
 fcube=false(size(out.dust));

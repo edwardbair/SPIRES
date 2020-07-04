@@ -146,7 +146,9 @@ w = 1./(ppl.*ppt);
 
 % solar zenith
 solarZ = double(GetMOD09GA(file,'solarzenith'));
+%solarZ can (erroneously) exceed 90
 mu0 = cosd(solarZ);
+mu0(mu0<0)=0;
 if useTopo
     mu0 = imresize(mu0,2);
 end
