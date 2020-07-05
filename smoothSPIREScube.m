@@ -1,7 +1,6 @@
 function out=smoothSPIREScube(nameprefix,outloc,matdates,...
     windowSize,windowThresh,mingrainradius,maxgrainradius,mindust,maxdust,...
-    mask,topofile,el_cutoff,fsca_thresh,cc,fice,endconditions,solarZdust,...
-    dust_grain_thresh)
+    mask,topofile,el_cutoff,fsca_thresh,cc,fice,endconditions,solarZthresh,b_R)
 %function to smooth cube after running through SPIRES
 % nameprefix - name prefix for outputs, e.g. Sierra
 % outloc - output location, string
@@ -22,14 +21,13 @@ function out=smoothSPIREScube(nameprefix,outloc,matdates,...
 % fice - fraction of ice/neve, single or double, 0-1, mxn
 % endcondition - string, end condition for splines for dust and grain size, 
 % e.g. 'estimate' or 'periodic', see slmset.m
-% max solar zenith for dust estimates, deg, e.g. 35
-% dust_grain_thresh - threshold fsca for dust/grain retrievals, below gets 
-% nearly zero weight, e.g. 0.2
+% solarZthresh - max solar zenith for dust estimates, deg, e.g. 35
+% b_R -b/R ratio for canopy cover, see GOvgf.m
 
 %output: struct out w/ fields
 %fsca, grainradius, dust, and hdr (geographic info)
 
-%1.34 hr/yr for h08v05, 2017
+%0.75-1.5 hrfor Sierra Nevada with 60 cores
 time1=tic;
 
 fprintf('reading %s...%s\n',datestr(matdates(1)),datestr(matdates(end)));
@@ -77,7 +75,7 @@ cc(isnan(cc))=0;
 t=out.fsca==0;
 
 %use GO model, 
-cc_adj=1-GOvgf(cc,0,0,out.sensorZ,0,4);
+cc_adj=1-GOvgf(cc,0,0,out.sensorZ,0,b_R);
 
 fice(isnan(fice))=0;
 fice=repmat(fice,[1 1 size(out.fsca,3)]);
@@ -127,8 +125,28 @@ fprintf('smoothing grain radius %s...%s\n',datestr(matdates(1)),...
 %create mask of any fsca for interpolation
 anyfsca=any(out.fsca,3);
 
+%scene center
+[x,y]=pixcenters(hdr.RefMatrix,size(Z),'makegrid');
+[lat,lon]=minvtran(hdr.ProjectionStructure,...
+    x(round(length(x)/2)),y(round(length(y)/2)));
+%hard coded to MODIS local overpass time
+[ declin, ~, solar_lon, ~ ]=Ephemeris(matdates+10.5/24+8/24);
+
+mu0=sunang(lat,lon,declin,solar_lon);
+mu0mat=zeros(size(out.fsca));
+for i=1:length(matdates)
+    mu0mat(:,:,i)=mu0(i);
+end
+
+start=find(mu0>=cosd(solarZthresh),1,'first');
+finish=find(mu0>=cosd(solarZthresh),1,'last');
+
+%250 um hardcoded b.c. it's initial guess for grain size
 badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius | ...
-out.dust > maxdust ;
+out.dust > maxdust | (out.grainradius <= 250 & mu0mat >= cosd(solarZthresh)) ;
+
+%help save some memory
+clear mu0mat
 
 %grain sizes too small or large to be trusted
 %bad grain sizes
@@ -137,11 +155,9 @@ out.grainradius(badg)=NaN;
 % use weights
 newweights=out.weights;
 newweights(isnan(out.grainradius) | out.fsca==0)=0;
-%set low weight for low raw fsca
-newweights(out.fsca_raw<dust_grain_thresh)=0.01;
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
-    'method','slm','knots',-3,'envelope','supremum','endconditions',endconditions);
+   'method','smoothingspline','SmoothingParam',0.2);
 
 out.grainradius(out.grainradius<mingrainradius)=mingrainradius;
 out.grainradius(out.grainradius>maxgrainradius)=maxgrainradius;
@@ -155,16 +171,8 @@ fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
 out.dust(badg)=NaN;
-%scene center
-[x,y]=pixcenters(hdr.RefMatrix,size(Z));
-[lat,lon]=minvtran(hdr.ProjectionStructure,...
-    x(round(length(x)/2)),y(round(length(y)/2)));
-[ declin, ~, solar_lon, ~ ]=Ephemeris(matdates+10.5/24+8/24);
-mu0=sunang(lat,lon,declin,solar_lon);
 
-start=find(mu0>cosd(solarZdust),1,'first');
-finish=find(mu0>cosd(solarZdust),1,'last');
-t=mu0 < cosd(solarZdust) ;
+t=mu0 < cosd(solarZthresh) ;
 out.dust(:,:,t)=0; %assume its clean if you cant see it
 
 fcube=false(size(out.dust));
@@ -172,8 +180,13 @@ fcube(:,:,start:finish)=true;
 
 out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
     'method','slm','monotonic','increasing','fcube',fcube,'knots',-4,...
-    'envelope','supremum','endconditions',endconditions);
+    'endconditions',endconditions);
 
+%save some memory
+clear fcube
+
+%clean up out of bounds splines
+out.dust(:,:,t)=0;
 out.dust(out.dust>maxdust)=maxdust;
 out.dust(out.dust<mindust)=mindust;
 out.dust(out.fsca==0 | isnan(out.fsca))=NaN;
