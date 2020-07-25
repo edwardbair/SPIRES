@@ -1,11 +1,9 @@
 function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
-    fsca_thresh,grain_thresh,dust_thresh,DustMaskfile,CCfile,...
-    WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset)
+    fsca_thresh,solarZthresh,CCfile,WaterMaskfile,CloudMaskfile,fIcefile,...
+    el_cutoff,subset)
 
 %run spires  for a landsat scene
-% r0date - date for background scene in yyyymmdd, e.g. 20180923
 % r0dir - R0 directory, must contain geotiff surface reflectances from USGS
-% rdate - date for snow scene in yyyymmdd, e.g. 20190131
 % rdir - R directory
 % demfile - matfile containing dem in m in same projection as R&R0
 % must contain: Z, elevation in m;
@@ -14,15 +12,10 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 % Ffile - mat file containing F griddedInterpolant R=F(grain radius (um),...
 % dust (ppmw),solarZenith (degrees),bands (scalar))
 % shade - shade endmeber, scalar or vector, length #bands
-%tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
+% tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.10, scalar
-% grain_thresh - minimum fsca value for grain size detection, e.g 0.25
-% dust_thresh - minimum fsca value for dust size detection e.g.
-% 0.75
-% DustMaskfile - dust mask file location, locations where dust can be
-% estimated
-% watermask
+% solarZthresh - max solar zenith for dust estimates, deg, e.g. 35
 % CCfile - location of .mat
 % canopy cover - canopy cover for pixels 0-1, size of scene
 % WaterMaskfile - water mask file location, contains watermask, logical
@@ -53,7 +46,7 @@ swir_b=6;
 
 t1=tic;
 
-[solarZ,phi0]=getOLIsolar(rdir);
+solarZ=getOLIsolar(rdir);
 
 dem=load(demfile);
 
@@ -69,41 +62,20 @@ if ~isempty(subset)
     dem.hdr.RasterReference=refmatToMapRasterReference(dem.hdr.RefMatrix,...
         size(x));
     dem.Z=dem.Z(rl,cl);
+    solarZmat=ones(size(dem.Z)).*solarZ;
 end
-    tt1=tic;
-    [Slope,Aspect] = SlopeAzmProjected(dem.hdr.RefMatrix, ...
-    dem.hdr.ProjectionStructure, dem.Z);
-    [x,y]=pixcenters(dem.hdr.RefMatrix,size(Slope),'makegrid');
-    [lat,lon]=minvtran(dem.hdr.ProjectionStructure,x,y);
-    
-    sinF=Horizons2Directions('earth',180-phi0,lat,lon,dem.Z);
-    tt2=toc(tt1);
-    fprintf('Horizon calc in %4.2f min\n',tt2/60);
-
-    h=asind(sinF);
-    mu=sunslope(cosd(solarZ),180-phi0,Slope,Aspect);
-
-    %in sun if solarZ > 10 deg, shaded if solarZ <= 10 deg
-    smask= (90-acosd(mu))-h > 10;
-
-smask=~imfill(~smask,8,'holes'); %fill in errant holes
-
-
 
 %get R0 refl and reproject to hdr
 R0=getOLIsr(r0dir,dem.hdr);
 
 nanmask=all(isnan(R0.bands),3);
 
-%get sun data
-[solarZR0,phi0R0]=getOLIsolar(r0dir);
-
 %snow-covered scene and reproject to hdr
 R=getOLIsr(rdir,dem.hdr);
 
 %load adjustment files
 
-adjust_vars={'cloudmask','fice','cc','watermask','dustmask'};
+adjust_vars={'cloudmask','fice','cc','watermask'};
 
 for i=1:length(adjust_vars)
 if i==1
@@ -114,8 +86,6 @@ elseif i==3
     m=matfile(CCfile);
 elseif i==4
     m=matfile(WaterMaskfile);
-elseif i==5
-    m=matfile(DustMaskfile);
 end
 
 if ~isempty(regexp(adjust_vars{i},'.*mask.*','ONCE'))
@@ -145,52 +115,43 @@ thdr=m.hdr;
     end
 end
 
-%normalizeReflectance
-t=normalizeReflectance(R.bands,Slope,Aspect,solarZ,phi0,'rotation');
-t0=normalizeReflectance(R0.bands,Slope,Aspect,solarZR0,phi0R0,'rotation');
 
-m=~smask | nanmask | A.cloudmask | A.watermask;
+m=nanmask | A.cloudmask | A.watermask;
 
-o=run_spires(t0,t,acosd(mu),Ffile,m,shade,grain_thresh,...
-   dust_thresh,A.dustmask,tolval,dem.hdr,red_b,swir_b);
+o=run_spires(R0.bands,R.bands,solarZmat,Ffile,m,shade,tolval,red_b,swir_b);
 
 fsca_raw=single(o.fsca);
-t0=fsca_raw==0 | A.cc==1; %track zeros to prevent 0/0 = NaN
+t0=fsca_raw==0; %track zeros to prevent 0/0 = NaN
 
 %fshade correction
 fshade=o.fshade;
-ifsca=fsca_raw./(1-fshade);
-
-%viewable gap correction
-% A.cc(isnan(A.cc))=0;
-% ifsca=ifsca./(1-A.cc);
-ifsca(A.cc>0 & ifsca>fsca_thresh)=1;
-
-% fice correction
+A.cc(isnan(A.cc))=0;
 A.fice(isnan(A.fice))=0;
-ifsca=ifsca./(1-A.fice);
 
-%have to copy matrix across 3rd dim to set to min(fsca,ice)
-fice_r=repmat(A.fice,[1 1 size(ifsca,3)]);
-t=ifsca<fice_r;
-ifsca(t)=fice_r(t);
-
-ifsca(ifsca>1)=1;
+ifsca=fsca_raw./(1-fshade-A.fice);
+ifsca(ifsca>1 | ifsca<0)=1;
 ifsca(t0)=0;
+
 ifsca(ifsca<fsca_thresh)=0;
+
+ifsca(ifsca>0 & A.cc>0)=1;
 
 %elevation cutoff
 el_mask=dem.Z<el_cutoff;
 ifsca(el_mask)=0;
 
 % set pixels outside boundary, in cloudy mask, or in shade
-ifsca(nanmask | A.cloudmask | ~smask | A.watermask)=NaN;
+ifsca(nanmask | A.cloudmask | A.watermask)=NaN;
 
 igrainradius=single(o.grainradius);
 igrainradius(isnan(ifsca) | ifsca==0)=NaN;
 
-idust=single(o.dust);
-idust(isnan(ifsca) | ifsca==0)=NaN;
+if solarZ > solarZthresh
+    idust=zeros(size(ifsca));
+else
+    idust=single(o.dust);
+    idust(isnan(ifsca) | ifsca==0)=NaN;
+end
 
 out.fsca_raw=fsca_raw;
 out.fsca=ifsca;
@@ -198,11 +159,9 @@ out.fshade=fshade;
 out.grainradius=igrainradius;
 out.dust=idust;
 out.watermask=A.watermask;
-out.shademask=~smask;
 out.cloudmask=A.cloudmask;
 out.nodatamask=nanmask;
 out.cc=A.cc;
-out.mu=mu;
 out.mu0=cosd(solarZ);
 
 out.hdr=dem.hdr;

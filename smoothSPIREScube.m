@@ -157,7 +157,7 @@ newweights=out.weights;
 newweights(isnan(out.grainradius) | out.fsca==0)=0;
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
-   'method','smoothingspline','SmoothingParam',0.2);
+   'method','smoothingspline','SmoothingParam',[]);
 
 out.grainradius(out.grainradius<mingrainradius)=mingrainradius;
 out.grainradius(out.grainradius>maxgrainradius)=maxgrainradius;

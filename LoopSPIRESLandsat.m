@@ -1,5 +1,5 @@
 function LoopSPIRESLandsat(basedir,R0list,Rlist,subsetmasklist,Ffile,...
-    shade,tolval,fsca_thresh,grain_thresh,dust_thresh,outdir,el_cutoff)
+    shade,tolval,fsca_thresh,solarZthresh,outdir,el_cutoff)
 % call SPIRES Landsat in a loop
 %input:
 %basedir - base dir where L8 inputs live
@@ -10,7 +10,6 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,subsetmasklist,Ffile,...
 %"fice" - ice fraction in pPPPrRRR.mat with variable fice, single
 %"watermask" - watermask in pPPPrRRR.mat with variable watermask, logical
 %"sr" - surface reflectance dir w/ subdirs in R & R0 list
-%"dustmask" in pPPPrRRR.mat with variable dustmask, logical
 % R0list - directory list for R0, cell, Nx1
 % Rlist - directory list for R, cell Nx1
 % subsetmasklist - list of subset files corresponding to Rlist, cell Nx1
@@ -20,9 +19,7 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,subsetmasklist,Ffile,...
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.10, scalar
-% grain_tresh - minimum fsca for grain size detection, e.g 0.95
-% dust_thresh - minimum fsca value for dust & grain size detection e.g.
-% 0.95
+% solarZthresh - max solar zenith for dust estimates, deg, e.g. 35
 % outdir - where to write files out
 % el_cutoff - elevation cutoff, m
 %note subset is based of DEM, as L8 has different sized scenes for
@@ -30,6 +27,7 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,subsetmasklist,Ffile,...
 %takes a while if not subsetting, e.g. p42r34 
 
 for i=1:length(Rlist)
+% for i=1:1
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});
     [~,fpart]=fileparts(rdir);
@@ -41,10 +39,6 @@ for i=1:length(Rlist)
     CCfile=fullfile(basedir,'cc',fname);
     WaterMaskfile=fullfile(basedir,'watermask',fname);
     CloudMaskfile=fullfile(basedir,'cloudmask',fname);
-%     CloudMaskfile=fullfile(basedir,'wvmask','cloudmask',[Rlist{i},'_wvmask.mat']);
-%     cm=matfile(CloudMaskfile);
-%     hdr=cm.hdr;
-%     mask=cm.cloudmask;
     sm=matfile(fullfile(basedir,subsetmasklist{i}));
     hdr=sm.hdr;
     fn=fieldnames(sm);
@@ -71,13 +65,11 @@ for i=1:length(Rlist)
     [r,c]=map2pix(RefMatrix,x,y);
     subset=[min(r) max(r);min(c) max(c)];
     
-    DustMaskfile=fullfile(basedir,'dustmask',fname);
     fIcefile=fullfile(basedir,'fice',fname);
    
-    out=run_spires_landsat(r0dir,rdir,demfile,...
-        Ffile,shade,tolval,fsca_thresh,grain_thresh,dust_thresh,...
-        DustMaskfile,CCfile,WaterMaskfile,CloudMaskfile,fIcefile,...
-        el_cutoff,subset);
+    out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
+    fsca_thresh,solarZthresh,CCfile,WaterMaskfile,CloudMaskfile,fIcefile,...
+    el_cutoff,subset);
     
     fn=fieldnames(out);
     outname=fullfile(outdir, [Rlist{i} '.mat']);
