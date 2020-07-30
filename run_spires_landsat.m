@@ -118,7 +118,8 @@ end
 
 m=nanmask | A.cloudmask | A.watermask;
 
-o=run_spires(R0.bands,R.bands,solarZmat,Ffile,m,shade,tolval,red_b,swir_b);
+o=run_spires(R0.bands,R.bands,solarZmat,Ffile,m,shade,tolval,red_b,swir_b,...
+    solarZthresh);
 
 fsca_raw=single(o.fsca);
 t0=fsca_raw==0; %track zeros to prevent 0/0 = NaN

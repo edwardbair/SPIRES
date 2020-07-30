@@ -1,5 +1,5 @@
 function out=run_spires(R0,R,solarZ,Ffile,mask,shade,tolval,...
-    red_b,swir_b)
+    red_b,swir_b,solarZthresh)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -18,6 +18,8 @@ function out=run_spires(R0,R,solarZ,Ffile,mask,shade,tolval,...
 % as more pixels are grouped together
 % red_b - red band, e.g. 3 for MODIS and L8
 % swir_b - SWIR band, e.g. 6 for MODIS and L8
+% solarZthresh - max solar zenith angle for dust estimates; 
+% otherwise assumed clean, e.g. 40 deg
 
 %output:
 %   out : struct w fields
@@ -57,8 +59,7 @@ for i=1:sz(4) %for each day
     R0ind=(Rind(end)+1):(Rind(end)+sz(3));
     sZind=R0ind(end)+1;
     
-    M=M(t,:); 
-   
+    M=M(t,:);
     [c,im,~]=uniquetol(M,tolval,'ByRows',true,'DataScale',1,...
         'OutputAllIndices',true);
     im1=zeros(size(im));
@@ -75,8 +76,11 @@ for i=1:sz(4) %for each day
         pxR=c(j,Rind);
         pxR0=c(j,R0ind);
         sZ=c(j,sZind);
-        %dirty snow w/ shade
-        o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
+        if sZ > solarZthresh %assume clean
+            o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,0,1,[],[]);
+        else %assume dirty
+            o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
+        end
         temp(j,:)=o.x;
     end
 

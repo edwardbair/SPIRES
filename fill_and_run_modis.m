@@ -1,5 +1,6 @@
 function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,...
-    matdates,hdfbasedir,topofile,mask,Ffile,shade,tolval,outloc,nameprefix)
+    matdates,hdfbasedir,topofile,mask,Ffile,shade,tolval,outloc,nameprefix,...
+    solarZthresh)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -56,7 +57,7 @@ for i=1:length(m)
     fillMODIScube(tiles,r0dates,rundates,hdfbasedir,swir_b,hdr);
 
     out=run_spires(R0,R,solarZ,Ffile,mask,shade,tolval,...
-        red_b,swir_b);
+        red_b,swir_b,solarZthresh);
 
     out.weights=weights; %put weights into output struct
     out.sensorZ=sensorZ; %put sensor zenith into output struct

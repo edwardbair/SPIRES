@@ -145,6 +145,7 @@ finish=find(mu0>=cosd(solarZthresh),1,'last');
 badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius | ...
 out.dust > maxdust | (out.grainradius <= 250 & mu0mat >= cosd(solarZthresh)) ;
 
+
 %help save some memory
 clear mu0mat
 
@@ -155,20 +156,13 @@ out.grainradius(badg)=NaN;
 % use weights
 newweights=out.weights;
 newweights(isnan(out.grainradius) | out.fsca==0)=0;
+mg=max(out.grainradius,[],3);
+mg=repmat(mg,[1 1 size(out.fsca,3)]);
+tt=out.fsca==0;
+out.grainradius(tt)=mg(tt);
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
-   'method','smoothingspline','SmoothingParam',[]);
-
-out.grainradius(out.grainradius<mingrainradius)=mingrainradius;
-out.grainradius(out.grainradius>maxgrainradius)=maxgrainradius;
-
-out.grainradius(out.fsca==0 | isnan(out.fsca))=NaN;
-
-fprintf('finished smoothing grain radius %s...%s\n',datestr(matdates(1)),...
-    datestr(matdates(end)));
-
-fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
-    datestr(matdates(end)));
+   'method','smoothingspline','SmoothingParam',0.8);
 
 out.dust(badg)=NaN;
 
@@ -177,6 +171,18 @@ out.dust(:,:,t)=0; %assume its clean if you cant see it
 
 fcube=false(size(out.dust));
 fcube(:,:,start:finish)=true;
+
+
+fprintf('finished smoothing grain radius %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
+
+out.grainradius(out.grainradius<mingrainradius)=mingrainradius;
+out.grainradius(out.grainradius>maxgrainradius)=maxgrainradius;
+
+out.grainradius(out.fsca==0 | isnan(out.fsca))=NaN;
+
+fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
+    datestr(matdates(end)));
 
 out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
     'method','slm','monotonic','increasing','fcube',fcube,'knots',-4,...
