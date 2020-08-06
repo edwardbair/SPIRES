@@ -76,14 +76,17 @@ for i=1:sz(4) %for each day
         pxR=c(j,Rind);
         pxR0=c(j,R0ind);
         sZ=c(j,sZind);
-        if sZ > solarZthresh %assume clean
-            o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,0,1,[],[]);
-        else %assume dirty
-            o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
-        end
+%         if sZ > solarZthresh %assume clean
+            o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,0,1,[],[]);  
+%         else %assume dirty
+%             o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
+%         end
         temp(j,:)=o.x;
     end
 
+    
+    
+    
     repxx=NaN(size(M,1),length(outvars));
     for j=1:size(temp,1) % the unique indices
         idx=im{j}; %indices for each unique val

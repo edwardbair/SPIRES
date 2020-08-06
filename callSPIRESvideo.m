@@ -13,4 +13,4 @@ for i=1:length(d)
     end
 end
 
-make_spires_video(list,target,HUCunion,topofile);
+make_spires_video(list,target,HUCunion);

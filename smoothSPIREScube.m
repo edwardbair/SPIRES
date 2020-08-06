@@ -141,9 +141,8 @@ end
 start=find(mu0>=cosd(solarZthresh),1,'first');
 finish=find(mu0>=cosd(solarZthresh),1,'last');
 
-%250 um hardcoded b.c. it's initial guess for grain size
 badg=out.grainradius<mingrainradius | out.grainradius>maxgrainradius | ...
-out.dust > maxdust | (out.grainradius <= 250 & mu0mat >= cosd(solarZthresh)) ;
+out.dust > maxdust ;
 
 
 %help save some memory
