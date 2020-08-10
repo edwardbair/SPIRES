@@ -1,6 +1,5 @@
-function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,...
-    matdates,hdfbasedir,topofile,mask,Ffile,shade,tolval,outloc,nameprefix,...
-    solarZthresh)
+function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdates,...
+    hdfbasedir,topofile,mask,dustmask,Ffile,shade,grain_thresh,dust_thresh,tolval,outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -15,14 +14,18 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,...
 % must have sub directories that correspond to entries in tile, e.g. h08v04
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
 % mask- logical mask w/ ones for pixels to exclude (like water)
-% Ffile, location of griddedInterpolant object that produces 
+% dustmask - logical mask for suitable dust locations
+% Ffile- location of griddedInterpolant object that produces 
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
-% shade endmeber, scalar or vector, length of # bands
-% tol val: threshold for uniquetol spectra, higher runs faster, 0 runs all
-% pixels, scalar e.g. 0.05
-% outloc: path to write output
+% shade -, scalar or vector, length of # bands
+% grain_thresh - min fsca value for grain size retrievals , e.g. 0.50
+% dust_thresh - min fsca value for dust retrievals, e.g. 0.95
+% tolval - threshold for uniquetol spectra, higher runs faster, 0 runs all
+% pixels - scalar e.g. 0.05
+% outloc - path to write output
 % nameprefix - name prefix for outputs, e.g. Sierra
+
 
 %output:
 %   out:
@@ -48,16 +51,13 @@ dv=datevec(matdates);
 m=unique(dv(:,2),'stable');
 [~,hdr]=GetTopography(topofile,'elevation');
 
-
 for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
-   
     [R,R0,~,solarZ,sensorZ,~,weights]=...
     fillMODIScube(tiles,r0dates,rundates,hdfbasedir,swir_b,hdr);
-
-    out=run_spires(R0,R,solarZ,Ffile,mask,shade,tolval,...
-        red_b,swir_b,solarZthresh);
+    out=run_spires(R0,R,solarZ,Ffile,mask,dustmask,shade,grain_thresh,dust_thresh,...
+        tolval,hdr,red_b,swir_b);
 
     out.weights=weights; %put weights into output struct
     out.sensorZ=sensorZ; %put sensor zenith into output struct

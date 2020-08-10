@@ -14,6 +14,7 @@ function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
 %geographic information that everything will be tiled and
 %cropped/reprojected to
 %swir_b - swir band, scalar
+%hdr - geog hdr struct
 %output:
 %filledCube: gap filled (cloud free) cube of MOD09GA values
 %R0: background MOD09GA from r0dates
@@ -22,7 +23,7 @@ function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
 %SensorZenith: sensor zenith angles for cube
 %cloudmask: cloudmask cube, logical
 %pxweights: weight cube for each pixel (all bands together), 0-1
-%hdr- geog hdr for output
+
 nbands=7;
 % mask as cloud if swir band (6) is > than
 swir_cloud_thresh=0.2;
