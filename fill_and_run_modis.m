@@ -1,5 +1,5 @@
 function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdates,...
-    hdfbasedir,topofile,mask,dustmask,Ffile,shade,grain_thresh,dust_thresh,tolval,outloc,nameprefix)
+    hdfbasedir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,tolval,outloc,nameprefix)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -14,7 +14,6 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdate
 % must have sub directories that correspond to entries in tile, e.g. h08v04
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
 % mask- logical mask w/ ones for pixels to exclude (like water)
-% dustmask - logical mask for suitable dust locations
 % Ffile- location of griddedInterpolant object that produces 
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
@@ -54,11 +53,10 @@ m=unique(dv(:,2),'stable');
 for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
-    [R,R0,~,solarZ,sensorZ,~,weights]=...
+    [R,R0,~,solarZ,sensorZ,~,weights,~]=...
     fillMODIScube(tiles,r0dates,rundates,hdfbasedir,swir_b,hdr);
-    out=run_spires(R0,R,solarZ,Ffile,mask,dustmask,shade,grain_thresh,dust_thresh,...
-        tolval,hdr,red_b,swir_b);
-
+    out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
+        grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b,[]);
     out.weights=weights; %put weights into output struct
     out.sensorZ=sensorZ; %put sensor zenith into output struct
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);

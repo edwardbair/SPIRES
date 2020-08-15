@@ -1,5 +1,5 @@
-function out=run_spires(R0,R,solarZ,Ffile,mask,dustmask,shade,...
-    grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b)
+function out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
+    grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b,bweights)
 % run LUT version of scagd for 4-D matrix R
 % produces cube of: fsca, grain size (um), and dust concentration (by mass)
 % input:
@@ -13,7 +13,6 @@ function out=run_spires(R0,R,solarZ,Ffile,mask,dustmask,shade,...
 % with inputs: grain radius (um), dust (ppmw), solar zenith angle (deg),
 % band # (not necessarily in order of wavelength)
 % mask - logical mask (MxN), true for areas to NOT process
-% dustmask - mask of values suitable for dust estimates
 % shade - scalar or vector, length of # bands
 % grain_thresh - grain size threshold fsca value, e.g. 0.25
 % dust_thresh - dust size threshold fsca value, e.g. 0.85
@@ -22,6 +21,7 @@ function out=run_spires(R0,R,solarZ,Ffile,mask,dustmask,shade,...
 % hdr - header struct w/ map info, see GetCoordinateInfo.m
 % red_b - red band, e.g. 3 for MODIS and L8
 % swir_b - SWIR band, e.g. 6 for MODIS and L8
+% bweights - band weights MxNxd, empty if not used
 
 %output:
 %   out - struct w fields
@@ -48,27 +48,38 @@ end
 solarZ=reshape(double(solarZ),[sz(1)*sz(2) sz(4)]);
 R=reshape(double(R),[sz(1)*sz(2) sz(3) sz(4)]);
 R0=reshape(double(R0),[sz(1)*sz(2) sz(3)]);
+
+if ~isempty(bweights)
+   bweights=reshape(bweights,[sz(1)*sz(2) sz(4)]);
+end
+
 mask=reshape(mask,[sz(1)*sz(2) 1]);
 X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
-dm=reshape(dustmask,[sz(1)*sz(2) 1]);
 
 for i=1:sz(4) %for each day
+    
+    if ~isempty(bweights)
+       %mask for weights < 1 in any band 
+       bmask=bweights(:,i) < sz(3);
+       daymask=mask | bmask;
+    else
+       daymask=mask;
+    end
    
     thisR=squeeze(R(:,:,i));
     thissolarZ=squeeze(solarZ(:,i));
     
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
          (thisR(:,red_b)+thisR(:,swir_b));
-    t=NDSI > -0.5  & ~mask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
+    t=NDSI > -0.5  & ~daymask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
     
-    M=[round(thisR,2) round(R0,2) round(thissolarZ) dm];
+    M=[round(thisR,2) round(R0,2) round(thissolarZ)];
     
     %keep track of indices
     Rind=1:sz(3);
     R0ind=(Rind(end)+1):(Rind(end)+sz(3));
     sZind=R0ind(end)+1;
-    dmind=sZind(end)+1;
     
     M=M(t,:);
     XM=X(t); % X coordinates for M
@@ -79,7 +90,7 @@ for i=1:sz(4) %for each day
        im1=zeros(size(im));
     else
        c=M;
-       im=cell(1,size(c,1));
+       im=cell(size(c,1),1);
        for ii=1:size(c,1)
           im{ii}=ii; 
        end
@@ -96,21 +107,28 @@ for i=1:sz(4) %for each day
     temp=NaN(size(c,1),length(outvars));
     
     parfor j=1:size(c,1) %solve for unique (w/ tol) rows
-        thisdm=c(j,dmind);
         pxR=c(j,Rind);
+        if any(pxR>1)
+           pxR=pxR./max(pxR); %normalize to 1 
+        end
         pxR0=c(j,R0ind);
         sZ=c(j,sZind);
+        
+        w=ones(length(pxR),1);
+        % [out,modelRefl] = ...
+        %speedyinvert(R,R0,solarZ,Ffile,shade,dustmask,shadebool,w)
 
-        o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,[],[]);
+       o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,w);
+       %fsca too low for grain size, set for interpolation
+       if o.x(1) < grain_thresh || o.x(2)>0.01
+          o.x(3)=NaN;
+       end
 
-        % fsca too low for grain size
-        if o.x(1) < grain_thresh || ~thisdm 
-           o.x(3)=NaN;
+        %fsca too low or too dark for dust
+        if o.x(1) < dust_thresh || o.x(2)>0.01 %can be solved for dust
+           o.x(4)=NaN; 
         end
-        % fsca too low for dust
-        if o.x(1) < dust_thresh || ~thisdm 
-           o.x(4)=NaN;
-        end
+        
         temp(j,:)=o.x;
     end
     %second pass, use interpolated dust/grain sizes
@@ -124,9 +142,6 @@ for i=1:sz(4) %for each day
         XCYCgrain=[XC(tt_grain),YC(tt_grain)];
         XCYCdust=[XC(tt_dust),YC(tt_dust)];
         parfor j=1:size(c,1)
-%             pxR=c(j,Rind);
-%             pxR0=c(j,R0ind);
-%             sZ=c(j,sZind);
             
             if ~tt_grain(j)
                 dist_grain=pdist2(XCYCgrain,[XC(j),YC(j)]);
@@ -143,11 +158,9 @@ for i=1:sz(4) %for each day
             else
                 D=d(j);
             end
-            %inverse distance weighted average
-            %o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,D,G);
-            %sol=o.x; %fsca,shade,grain radius,dust
-%             temp(j,:)=sol;
+
             fs=temp(j,:);
+            
             temp(j,:)=[fs(1:2) G D];
         end
     end
@@ -160,6 +173,7 @@ for i=1:sz(4) %for each day
         end
     end
     %now fill out all pixels
+    
     for j=1:length(outvars)
         out.(outvars{j})(t,i)=repxx(:,j);
         tt=NDSI <= -0.5;
@@ -169,8 +183,14 @@ for i=1:sz(4) %for each day
             out.(outvars{j})(tt,i)=NaN;%grain & dust to NaN
         end
     end
+    
+%     minRforDust=300;
+%     if mean(out.grainradius(:,i),'omitnan') < minRforDust
+%         tt=~isnan(out.grainradius(:,i));
+%         out.dust(tt,i)=0;
+%     end
     t2=toc(t1);
-    fprintf('done w/ day %i in %g min\n',i,t2/60);
+    fprintf('done w/ day %i in %g min\n',i,t2/60);  
 end
 
 for i=1:length(outvars)

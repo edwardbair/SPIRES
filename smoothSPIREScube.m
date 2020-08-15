@@ -146,9 +146,6 @@ end
 %now fix dust values also before smoothing grain sizes
 %set dust to zero for small grains
 out.dust(badg)=NaN;
-out.dust(out.grainradius<200)=mindust;
-%set dust to NaN for intermediate grains
-% out.dust(out.grainradius>200 & out.grainradius<400)=NaN;
 
 %do the same for dust
 [~,idx]=sort(out.dust,3,'descend','MissingPlacement','last');
@@ -163,11 +160,7 @@ end
 % use weights
 newweights=out.weights;
 newweights(isnan(out.grainradius) | out.fsca==0)=0;
-% set NaNs to max to guide interpolation end conditions
-% mg=max(out.grainradius,[],3);
-% mg=repmat(mg,[1 1 size(out.fsca,3)]);
-% tt=out.fsca==0;
-% out.grainradius(tt)=mg(tt);
+
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
    'method','smoothingspline','SmoothingParam',0.8);
@@ -182,16 +175,30 @@ out.grainradius(out.fsca==0)=NaN;
 fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
-%   out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
-%      'method','smoothingspline','SmoothingParam',1e-4);
+%set dust to zero when smoothed grain radius is below some value
+dust_rg_thresh=250; %um
+
+out.dust(out.grainradius <= dust_rg_thresh) = mindust;
+dv=datevec(matdates);
+t=matdates<datenum([dv(end,1) 3 1]);
+out.dust(:,:,t) = mindust;
 
 out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
-     'method','slm','knots',-8,'envelope','supremum');
+     'method','smoothingspline','SmoothingParam',0.1);
 
+%  out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
+%       'method','slm','knots',-15,'envelope','supremum');
+
+
+% out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
+%     'method','slm','monotonic','increasing','fcube',out.dust>0,'knots',-2);
+  
 %clean up out of bounds splines
-out.dust(out.grainradius<200)=0;
 out.dust(out.dust>maxdust)=maxdust;
 out.dust(out.dust<mindust)=mindust;
+t=matdates<datenum([dv(end,1) 3 1]);
+out.dust(:,:,t) = mindust;
+
 out.dust(out.fsca==0)=NaN;
 
 fprintf('finished smoothing dust %s...%s\n',datestr(matdates(1)),...

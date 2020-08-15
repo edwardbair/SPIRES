@@ -1,5 +1,5 @@
-function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
-    fillMODIScube(tiles,r0dates,matdates,hdfbasedir,swir_b,hdr)
+function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights,...
+    bweights]=fillMODIScube(tiles,r0dates,matdates,hdfbasedir,swir_b,hdr)
 %create gap filled (e.g. cloud-free) MOD09GA surface
 %reflectance
 
@@ -23,6 +23,7 @@ function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights]=...
 %SensorZenith: sensor zenith angles for cube
 %cloudmask: cloudmask cube, logical
 %pxweights: weight cube for each pixel (all bands together), 0-1
+%bweights: band weights, 0-1 with all operator
 
 nbands=7;
 % mask as cloud if swir band (6) is > than
@@ -66,6 +67,7 @@ SolarZenith=zeros([sz0(1) sz0(2) sz0(4)]);
 SensorZenith=zeros([sz0(1) sz0(2) sz0(4)]);
 cloudmask=false([sz0(1) sz0(2) sz0(4)]);
 pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
+bweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
 %create R0 based on r0dates
 R0=zeros([sz0(1) sz0(2) sz0(3)]);
@@ -120,6 +122,7 @@ parfor i=1:length(matdates)
     SolarAzimuth_=NaN([sz(1) sz(2)]);
     cloudmask_=false([sz(1) sz(2)]);
     pxweights_=zeros([sz(1) sz(2)]);
+    bweights_=zeros([sz(1) sz(2)]);
     %load up each tile
     for k=1:length(tiles)
         tile=tiles{k};
@@ -137,8 +140,11 @@ parfor i=1:length(matdates)
             r=round(r);
             c=round(c);
             f=fullfile(hdfbasedir,tile,d{m});
-            [~,aWeights,~] = weightMOD09(f);
-            pxweights_(r,c)= aWeights;
+            [~,pxWeights,bWeights] = weightMOD09(f);
+            bWeights=bWeights{1};
+            bWeights=sum(bWeights,3);
+            bweights_(r,c)= bWeights;
+            pxweights_(r,c)= pxWeights;
 
                 x=single(GetMOD09GA(f,'SolarZenith'));
                 if any(isnan(x(:)))
@@ -195,12 +201,15 @@ parfor i=1:length(matdates)
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference); 
        pxweights_=rasterReprojection(pxweights_,BigR,mstruct,...
             hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+       bweights_=rasterReprojection(bweights_,BigR,mstruct,...
+            hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
 
     refl(:,:,:,i)=refl_;
     SolarZenith(:,:,i)=SolarZenith_;
     SensorZenith(:,:,i)=SensorZenith_;
     cloudmask(:,:,i)=cloudmask_;
     pxweights(:,:,i)=pxweights_;
+    bweights(:,:,i)=bweights_;
 end
 
 filledCube=refl;

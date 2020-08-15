@@ -1,5 +1,5 @@
 function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,shade,...
-     dustmask,shadebool,dust,r)
+     dustmask,shadebool,w)
 %stripped down inversion for speed
 % input:
 %   R - Nx1 band reflectance as vector, center of bandpass
@@ -10,9 +10,8 @@ function [out,modelRefl] = speedyinvert(R,R0,solarZ,Ffile,shade,...
 %   and band for a specific sensor, e.g. LandSat 8 OLI or MODIS
 %   shade, shade endmember, scalar and vector length of R&R0
 %   dustmask - only retrieve dust values where this is true
-%   dust - dust val (ppmw), [] if needs to be solved for
-%   r - grain size val (um), [] if needs to be solved for
 %   shadebool - use shade or not
+%   w - weight vector, Nx1
 % output:
 %   out: fsca, fshade, grain radius (um), and dust conc (ppm)
 persistent F
@@ -58,14 +57,7 @@ if ~shadebool
     fshade0=0;
     fshade_range=[0 0];
 end
-if ~isempty(dust) %if dust values are provided, set them
-    d0=dust;
-    d_range=[dust dust];
-end
-if ~isempty(r) %same for grain size
-   r0=r;
-   r_range=[r r];
-end
+
 
 x0=[fsca0 fshade0 r0 d0];
 lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
@@ -88,6 +80,11 @@ end
         end
         
         modelRefl=x(1).*modelRefl + x(2).*shade + (1-x(1)-x(2)).*R0;
-        diffR = norm(R - modelRefl);
+         diffR = norm(w.*R - w.*modelRefl);
+%MLE
+%          resid=(w.*R - w.*modelRefl);
+%          params=[0,std(resid)];
+%          negL=normlike(params,resid);
+
     end
 end
