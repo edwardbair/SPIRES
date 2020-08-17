@@ -6,8 +6,8 @@ function [filledCube,R0,refl,SolarZenith,SensorZenith,cloudmask,pxweights,...
 %input:
 %tiles - tilenames,  cell vector, e.g. {'h08v05','h08v04','h09v04'};
 %r0dates - matesdates for background each tile image, dates by row, tiles by column
-%   e.g. datenum([2015 9 25, 2015 9 25, 2015 9 25]); - same date all tiles
-%   e.g. repmat(datenum([2016 8 11; 2016 8 12; 2016 8 13; 2016 9 11 ],[1,3]); - same 4 dates for 3 tiles
+%e.g. datenum([2015 9 25, 2015 9 25, 2015 9 25]); - same date all tiles
+%e.g. repmat(datenum([2015 9 25; 2015 9 25; 2015 9 25; ],[1,3]); - same 4 dates for 3 tiles
 %matdates - matdates to process
 %hdfbasedir - where the MOD09GA HDF files live must have sub directories
 % that correspond to entries in tile, e.g. 'h08v04'
