@@ -134,12 +134,12 @@ out.grainradius(badg)=NaN;
 N=3;
 idx=idx(:,:,1:N);
 %find latest occuring peak
-idx=max(idx,[],3)+1;
+idx=max(idx,[],3);
 
 %set everything after peak to that value
 for i=1:size(idx,1)
     for j=1:size(idx,2)
-        out.grainradius(i,j,idx(i,j):end)=out.grainradius(i,j,idx(i,j)-1);
+        out.grainradius(i,j,idx(i,j):end)=out.grainradius(i,j,idx(i,j));
     end 
 end
     
@@ -148,19 +148,29 @@ end
 out.dust(badg)=NaN;
 
 %do the same for dust
+
+dv=datevec(matdates);
+t=matdates<datenum([dv(end,1) 3 1]);
+out.dust(:,:,t) = mindust;
+
+idx0=find(t,1,'last');
+idx0=idx0-10;
+%fcube=false(size(out.dust));
+
+
 [~,idx]=sort(out.dust,3,'descend','MissingPlacement','last');
 idx=idx(:,:,1:N);
-idx=max(idx,[],3)+1;
+idx=max(idx,[],3);
 for i=1:size(idx,1)
     for j=1:size(idx,2)
-        out.dust(i,j,idx(i,j):end)=out.dust(i,j,idx(i,j)-1);
+        %fcube(i,j,idx0:idx(i,j))=true;
+        out.dust(i,j,idx(i,j):end)=out.dust(i,j,idx(i,j));
     end 
 end
 
 % use weights
 newweights=out.weights;
 newweights(isnan(out.grainradius) | out.fsca==0)=0;
-
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
    'method','smoothingspline','SmoothingParam',0.8);
@@ -179,26 +189,29 @@ fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
 dust_rg_thresh=250; %um
 
 out.dust(out.grainradius <= dust_rg_thresh) = mindust;
-dv=datevec(matdates);
-t=matdates<datenum([dv(end,1) 3 1]);
-out.dust(:,:,t) = mindust;
-
-out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
-     'method','smoothingspline','SmoothingParam',0.1);
-
-%  out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
-%       'method','slm','knots',-15,'envelope','supremum');
-
 
 % out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
-%     'method','slm','monotonic','increasing','fcube',out.dust>0,'knots',-2);
-  
+%      'method','smoothingspline','SmoothingParam',0.1);
+
+out.dust(:,:,idx0:end)=smoothDataCube(out.dust(:,:,idx0:end),...
+    newweights(:,:,idx0:end),'mask',anyfsca,...
+      'method','slm','knots',-20,'envelope','supremum');
+
+
 %clean up out of bounds splines
 out.dust(out.dust>maxdust)=maxdust;
 out.dust(out.dust<mindust)=mindust;
 t=matdates<datenum([dv(end,1) 3 1]);
 out.dust(:,:,t) = mindust;
 
+%refix max value
+[maxval,idx]=max(out.dust,[],3,'omitnan');
+for i=1:size(idx,1)
+    for j=1:size(idx,2)
+        out.dust(i,j,idx(i,j):end)=maxval(i,j);
+    end 
+end
+   
 out.dust(out.fsca==0)=NaN;
 
 fprintf('finished smoothing dust %s...%s\n',datestr(matdates(1)),...

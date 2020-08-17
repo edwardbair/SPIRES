@@ -109,7 +109,7 @@ for j=1:length(vars)
         c2=colorbar('Location','south');
         c2.Label.String='grain radius, \mum';
 %         c2.Label.Color=[1 1 1];
-        caxis([40 1200])
+        caxis([40 900])
     elseif j==3
         c3=colorbar('Location','south');
         if dvisflag
