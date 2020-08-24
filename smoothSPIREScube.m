@@ -1,6 +1,6 @@
 function out=smoothSPIREScube(nameprefix,outloc,matdates,...
     windowSize,windowThresh,mingrainradius,maxgrainradius,mindust,maxdust,...
-    mask,topofile,el_cutoff,fsca_thresh,cc,fice,b_R)
+    mask,topofile,el_cutoff,fsca_thresh,cc,fice,b_R,dust_rg_thresh)
 %function to smooth cube after running through SPIRES
 % nameprefix - name prefix for outputs, e.g. Sierra
 % outloc - output location, string
@@ -20,6 +20,7 @@ function out=smoothSPIREScube(nameprefix,outloc,matdates,...
 % 0-1 for viewable gap fraction correction
 % fice - fraction of ice/neve, single or double, 0-1, mxn
 % b_R - b/R ratio for canopy cover, see GOvgf.m, e.g. 2.7
+% dust_rg_thresh, min grain radius for dust, e.g. 400 um
 
 %output: struct out w/ fields
 %fsca, grainradius, dust, and hdr (geographic info)
@@ -127,6 +128,12 @@ out.dust > maxdust ;
 
 %grain sizes too small or large to be trusted
 out.grainradius(badg)=NaN;
+out.dust(badg)=NaN;
+
+%grain sizes after melt out 
+out.dust(out.fsca==0)=NaN;
+
+%find max grain size
 
 [~,idx]=sort(out.grainradius,3,'descend','MissingPlacement','last');
 
@@ -136,37 +143,44 @@ idx=idx(:,:,1:N);
 %find latest occuring peak
 idx=max(idx,[],3);
 
-%set everything after peak to that value
+% dust_rg_thresh=400; %um
+
+% out.dust(out.grainradius <= dust_rg_thresh) = 0;
+out.dust(out.fsca==0)=NaN;
+out.dust(out.grainradius<=dust_rg_thresh)=0;
+%use a hampel filter to remove drops (clouds)
+%set everything after peak rg to peak rg/dust on that day
 for i=1:size(idx,1)
     for j=1:size(idx,2)
+        out.grainradius(i,j,:)=hampel(squeeze(out.grainradius(i,j,:)),2,2);
+%         t=out.grainradius(i,j,:)<=dust_rg_thresh;
+%         out.dust(i,j,t)=0;
+        
         out.grainradius(i,j,idx(i,j):end)=out.grainradius(i,j,idx(i,j));
-    end 
-end
-    
-%now fix dust values also before smoothing grain sizes
-%set dust to zero for small grains
-out.dust(badg)=NaN;
-
-%do the same for dust
-
-dv=datevec(matdates);
-t=matdates<datenum([dv(end,1) 3 1]);
-out.dust(:,:,t) = mindust;
-
-idx0=find(t,1,'last');
-idx0=idx0-10;
-%fcube=false(size(out.dust));
-
-
-[~,idx]=sort(out.dust,3,'descend','MissingPlacement','last');
-idx=idx(:,:,1:N);
-idx=max(idx,[],3);
-for i=1:size(idx,1)
-    for j=1:size(idx,2)
-        %fcube(i,j,idx0:idx(i,j))=true;
         out.dust(i,j,idx(i,j):end)=out.dust(i,j,idx(i,j));
     end 
 end
+
+    
+%now fix dust values also before smoothing grain sizes
+%set dust to zero for small grains
+
+
+%do the same for dust
+
+% dv=datevec(matdates);
+% t=matdates<datenum([dv(end,1) minDustMonth 1]);
+% out.dust(:,:,t) = mindust;
+% 
+% %start spline 10 days early
+% idx0=find(t,1,'last');
+% idx0=idx0-10;
+% fcube=false(size(out.dust));
+
+%set to NaN all dust after meltout
+% out.dust(out.fsca==0)=NaN;
+
+% fcube(:,:,idx0:end)=true;
 
 % use weights
 newweights=out.weights;
@@ -174,6 +188,10 @@ newweights(isnan(out.grainradius) | out.fsca==0)=0;
 
 out.grainradius=smoothDataCube(out.grainradius,newweights,'mask',anyfsca,...
    'method','smoothingspline','SmoothingParam',0.8);
+
+% out.grainradius=smoothDataCube(out.grainradius,...
+%      newweights,'mask',anyfsca,...
+%       'method','slm','knots',-2,'envelope','supremum');
 
 fprintf('finished smoothing grain radius %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
@@ -185,32 +203,40 @@ out.grainradius(out.fsca==0)=NaN;
 fprintf('smoothing dust %s...%s\n',datestr(matdates(1)),...
     datestr(matdates(end)));
 
-%set dust to zero when smoothed grain radius is below some value
-dust_rg_thresh=250; %um
 
-out.dust(out.grainradius <= dust_rg_thresh) = mindust;
 
-% out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
-%      'method','smoothingspline','SmoothingParam',0.1);
+% [~,idx]=sort(out.dust,3,'descend','MissingPlacement','last');
+% idx=idx(:,:,1:N);
+% idx=max(idx,[],3);
+% for i=1:size(idx,1)
+%     for j=1:size(idx,2)
+%         out.dust(i,j,idx(i,j):end)=out.dust(i,j,idx(i,j));
+%     end 
+% end
 
-out.dust(:,:,idx0:end)=smoothDataCube(out.dust(:,:,idx0:end),...
-    newweights(:,:,idx0:end),'mask',anyfsca,...
-      'method','slm','knots',-20,'envelope','supremum');
 
+
+
+out.dust=smoothDataCube(out.dust,newweights,'mask',anyfsca,...
+     'method','smoothingspline','SmoothingParam',0.1);
+
+% out.dust(:,:,idx0:end)=smoothDataCube(out.dust(:,:,idx0:end),...
+%      newweights(:,:,idx0:end),'mask',anyfsca,...
+%       'method','slm','knots',-4,'monotonic','increasing','fcube',fcube(:,:,idx0:end));
 
 %clean up out of bounds splines
 out.dust(out.dust>maxdust)=maxdust;
 out.dust(out.dust<mindust)=mindust;
-t=matdates<datenum([dv(end,1) 3 1]);
-out.dust(:,:,t) = mindust;
+% t=matdates<datenum([dv(end,1) minDustMonth 1]);
+% out.dust(:,:,t) = mindust;
 
 %refix max value
-[maxval,idx]=max(out.dust,[],3,'omitnan');
-for i=1:size(idx,1)
-    for j=1:size(idx,2)
-        out.dust(i,j,idx(i,j):end)=maxval(i,j);
-    end 
-end
+% [maxval,idx]=max(out.dust,[],3,'omitnan');
+% for i=1:size(idx,1)
+%     for j=1:size(idx,2)
+%         out.dust(i,j,idx(i,j):end)=maxval(i,j);
+%     end 
+% end
    
 out.dust(out.fsca==0)=NaN;
 
