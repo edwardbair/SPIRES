@@ -13,11 +13,11 @@ ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/Sierra/ExampleData
 
 3. Start a MATLAB session
 
-4. Add the directory and all its subdirectories to your MATLAB path,
+4. Add the code directory and all its subdirectories to your MATLAB path,
 
 "addpath(genpath([location where you checked out the code to]))"
 
-5. Call "run_modis_Sierra_example.m"
+5. Load the example inputs, i.e. "load Sierra_example_inputs.mat" 
 
 6. Examine the comments at the top of the two files called "fill_and_run_modis.m" &
 "smoothSPIREScube.m" to understand the inputs used, e.g. "edit fill_and_run_modis"
@@ -33,7 +33,11 @@ Ffile='/raid/spires/lut_modis_b1to7_3um_dust.mat';
 hdfbasedir='/raid/spires/mod09ga';
 topofile='/raid/spires/topo/SierraElevation.h5';
 
-8. SPIRES takes one or more MODIS tiles and then, if needed, 
+8. Call "run_modis_Sierra_example.m"
+
+Notes:
+
+SPIRES takes one or more MODIS tiles and then, if needed, 
 mosaics and reprojects/crops them to match the elevation dataset (and its map information) in the topography file. 
 In this case, h08v04, h09v04, and h08v05 are mosaiced and cropped to the Sierra Nevada domain.
 
