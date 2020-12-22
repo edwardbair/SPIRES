@@ -47,6 +47,6 @@ The minimum amount of time that'll work for smoothSPIREScube is 1 calendar mont
 
 Reference:
 
-Bair, E.H, Stillinger, T., and Dozier J (in review), Snow Property Inversion from Remote Sensing (SPIReS): A Generalized Multispectral Unmixing Approach with Examples from MODIS and Landsat 8 OLI, IEEE TGRS.
+Bair, E.H, Stillinger, T., and Dozier J (in press), Snow Property Inversion from Remote Sensing (SPIReS): A Generalized Multispectral Unmixing Approach with Examples from MODIS and Landsat 8 OLI, IEEE TGRS, doi: [10.1109/TGRS.2020.3040328] (https://dx.doi.org/10.1109/TGRS.2020.3040328)
 
 NB 2020-10-27
