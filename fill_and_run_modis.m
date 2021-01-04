@@ -1,3 +1,4 @@
+
 function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdates,...
     hdfbasedir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,tolval,outloc,nameprefix)
 
@@ -14,7 +15,7 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdate
 % must have sub directories that correspond to entries in tile, e.g. h08v04
 % topofile- h5 file name from consolidateTopography, part of TopoHorizons
 % mask- logical mask w/ ones for pixels to exclude (like water)
-% Ffile- location of griddedInterpolant object that produces 
+% Ffile- location of griddedInterpolant object that produces
 % reflectances for each band
 % with inputs: grain radius, dust, cosZ, i.e. the look up table, band
 % shade -, scalar or vector, length of # bands
@@ -32,7 +33,7 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdate
 %   grainradius: MxNxd
 %   dust: MxNxd
 %also writes 1 month .mat files with those outputs
-%fname - output filename 
+%fname - output filename
 % vars - cell, variable list
 % divisor - divisors for variables
 % dtype - datatype for each variable
@@ -53,27 +54,33 @@ m=unique(dv(:,2),'stable');
 for i=1:length(m)
     idx=dv(:,2)==m(i);
     rundates=matdates(idx);
-    [R,R0,~,solarZ,sensorZ,~,weights,~]=...
-    fillMODIScube(tiles,r0dates,rundates,hdfbasedir,swir_b,hdr);
-    out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
-        grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b,[]);
-    out.weights=weights; %put weights into output struct
-    out.sensorZ=sensorZ; %put sensor zenith into output struct
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);
-    mfile=matfile(fname,'Writable',true);
-    
-    for j=1:length(vars)
-        t=isnan(out.(vars{j}));
-        if j==3 || j==4  %grain size or dust
-            t=t | out.fsca==0 ;
+    if exist(fname,'file')==0 %don't overwrite existing files
+        
+        [R,R0,~,solarZ,sensorZ,~,weights,~]=...
+            fillMODIScube(tiles,r0dates,rundates,hdfbasedir,swir_b,hdr);
+        out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
+            grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b,[]);
+        out.weights=weights; %put weights into output struct
+        out.sensorZ=sensorZ; %put sensor zenith into output struct
+        
+        mfile=matfile(fname,'Writable',true);
+        
+        for j=1:length(vars)
+            t=isnan(out.(vars{j}));
+            if j==3 || j==4  %grain size or dust
+                t=t | out.fsca==0 ;
+            end
+            out.(vars{j})=cast(out.(vars{j})*divisor(j),dtype{j});
+            out.(vars{j})(t)=intmax(dtype{j});
+            mfile.(vars{j})=out.(vars{j});
         end
-        out.(vars{j})=cast(out.(vars{j})*divisor(j),dtype{j});
-        out.(vars{j})(t)=intmax(dtype{j});
-        mfile.(vars{j})=out.(vars{j});
+        
+        mfile.matdates=rundates;
+        fprintf('wrote %s \n',fname);
+    else
+        fprintf('%s already exists, skipping \n',fname);
     end
-    
-    mfile.matdates=rundates;
-    fprintf('wrote %s \n',fname);
 end
 t2=toc(t1);
 fprintf('completed in %5.2f hr\n',t2/60/60);

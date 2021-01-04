@@ -58,6 +58,7 @@ X=reshape(X,[sz(1)*sz(2) 1]);
 Y=reshape(Y,[sz(1)*sz(2) 1]);
 
 for i=1:sz(4) %for each day
+    t1=tic;
     
     if ~isempty(bweights)
        %mask for weights < 1 in any band 
@@ -101,7 +102,7 @@ for i=1:sz(4) %for each day
         
     XC=XM(im1); %X coordinates for c
     YC=YM(im1); %Y coordinates for c
-    t1=tic;
+   
     
     %first pass, solve for all
     temp=NaN(size(c,1),length(outvars));
@@ -120,12 +121,12 @@ for i=1:sz(4) %for each day
 
        o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,w);
        %fsca too low for grain size, set for interpolation
-       if o.x(1) < grain_thresh || o.x(2)>0.01
+       if o.x(1) < grain_thresh %|| o.x(2)>0.01
           o.x(3)=NaN;
        end
 
         %fsca too low or too dark for dust
-        if o.x(1) < dust_thresh || o.x(2)>0.01 %can be solved for dust
+        if o.x(1) < dust_thresh %|| o.x(2)>0.01 %can be solved for dust
            o.x(4)=NaN; 
         end
         
