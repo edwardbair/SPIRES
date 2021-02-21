@@ -1,5 +1,6 @@
 function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
-    fsca_thresh,solarZthresh,CCfile,WaterMaskfile,CloudMaskfile,fIcefile,...
+    fsca_thresh,dust_rg_thresh,grain_thresh,dust_thresh,CCfile,...
+    WaterMaskfile,CloudMaskfile,fIcefile,...
     el_cutoff,subset)
 
 %run spires  for a landsat scene
@@ -15,7 +16,9 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 % tolval - uniquetol tolerance, e.g. 0.05 for separating unique spectra
 % fsca_thresh - minumum fsca value for snow detection, values below are set to
 % zero, e.g. 0.10, scalar
-% solarZthresh - max solar zenith for dust estimates, deg, e.g. 35
+% dust_rg_thresh - min grain radius for dust calcl, e.g. 400 um
+% grain_thresh - min fsca for grain size, e.g. 0.90;
+% dust_thresh - min fsca for dust calc, e.g. 0.90;
 % CCfile - location of .mat
 % canopy cover - canopy cover for pixels 0-1, size of scene
 % WaterMaskfile - water mask file location, contains watermask, logical
@@ -118,8 +121,8 @@ end
 
 m=nanmask | A.cloudmask | A.watermask;
 
-o=run_spires(R0.bands,R.bands,solarZmat,Ffile,m,shade,tolval,red_b,swir_b,...
-    solarZthresh);
+o=run_spires(R0.bands,R.bands,solarZmat,Ffile,m,shade,...
+    grain_thresh,dust_thresh,tolval,dem.hdr,red_b,swir_b,[]);
 
 fsca_raw=single(o.fsca);
 t0=fsca_raw==0; %track zeros to prevent 0/0 = NaN
@@ -147,13 +150,9 @@ ifsca(nanmask | A.cloudmask | A.watermask)=NaN;
 igrainradius=single(o.grainradius);
 igrainradius(isnan(ifsca) | ifsca==0)=NaN;
 
-if solarZ > solarZthresh
-    idust=zeros(size(ifsca));
-else
-    idust=single(o.dust);
-    idust(isnan(ifsca) | ifsca==0)=NaN;
-end
-
+idust=single(o.dust);
+idust(igrainradius<=dust_rg_thresh)=0;
+    
 out.fsca_raw=fsca_raw;
 out.fsca=ifsca;
 out.fshade=fshade;

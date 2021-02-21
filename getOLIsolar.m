@@ -1,4 +1,4 @@
-function [solarZ,phi0]=getOLIsolar(ldir)
+function [solarZ,phi0,acquisitionDate]=getOLIsolar(ldir)
 %get solarZ and phi data for L8 OLI
 
 d=dir(fullfile(ldir,'*.xml'));
@@ -15,8 +15,12 @@ for k=0:list.getLength-1
         solarZ=str2double(solarZA.getFirstChild.getData.toString);
         phiA=Alist.getNamedItem("azimuth");
         phi0=str2double(phiA.getFirstChild.getData.toString);
-        break;
+        
+    elseif strcmp(thisListItem.getNodeName,'acquisition_date')
+        acquisitionDate=thisListItem.getFirstChild.getData.toString;
+        acquisitionDate=datenum(char(acquisitionDate),'yyyy-mm-dd');
     end
+    
 end
 % fid=fopen(fullfile(d.folder,d.name));
 % c=textscan(fid,'%q %q','Delimiter','=');

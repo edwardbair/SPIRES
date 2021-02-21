@@ -151,9 +151,9 @@ else
     %find latest occuring peak
     idx=max(idx,[],3);
 
-    %out.dust(out.fsca==0)=NaN;
+    out.dust(out.fsca==0)=NaN;
 
-    if fixpeak % set values after peak grain radius to peak   
+    if fixpeak   
     for i=1:size(idx,1)
         for j=1:size(idx,2)
             %get rid of spikes & drops
@@ -203,9 +203,9 @@ else
         end
     end
     
-    else %don't fix values after peak grain size, 
-        %assume zero dust for small grains
+    else %don't fix values after peak grain size
         out.dust(out.grainradius<dust_rg_thresh)=0; 
+        
     end
 
     % use weights
