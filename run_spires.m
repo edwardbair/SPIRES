@@ -86,8 +86,9 @@ for i=1:sz(4) %for each day
     XM=X(t); % X coordinates for M
     YM=Y(t); % Y coordinates for M
     if tolval>0
-    [c,im,~]=uniquetol(M,tolval,'ByRows',true,'DataScale',1,...
-        'OutputAllIndices',true);
+%     [c,im,~]=uniquetol(M,tolval,'ByRows',true,'DataScale',1,...
+%         'OutputAllIndices',true);
+      [c,im]=speedyUniqueTol(vals,uniquetolval);
        im1=zeros(size(im));
     else
        c=M;
