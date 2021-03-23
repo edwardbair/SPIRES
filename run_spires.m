@@ -75,7 +75,7 @@ for i=1:sz(4) %for each day
          (thisR(:,red_b)+thisR(:,swir_b));
     t=NDSI > -0.5  & ~daymask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
     
-    M=[round(thisR,2) round(R0,2) round(thissolarZ)];
+    M=[round(thisR,2)*100 round(R0,2)*100 round(thissolarZ)]; 
     
     %keep track of indices
     Rind=1:sz(3);
@@ -86,9 +86,10 @@ for i=1:sz(4) %for each day
     XM=X(t); % X coordinates for M
     YM=Y(t); % Y coordinates for M
     if tolval>0
-%     [c,im,~]=uniquetol(M,tolval,'ByRows',true,'DataScale',1,...
-%         'OutputAllIndices',true);
-      [c,im]=speedyUniqueTol(vals,uniquetolval);
+    [c,im,~]=uniquetol(M,tolval*100,'ByRows',true,'DataScale',1,...
+        'OutputAllIndices',true);
+
+%       [c,im]=speedyUniqueTol(M,tolval*100);
        im1=zeros(size(im));
     else
        c=M;
@@ -109,11 +110,11 @@ for i=1:sz(4) %for each day
     temp=NaN(size(c,1),length(outvars));
     
     parfor j=1:size(c,1) %solve for unique (w/ tol) rows
-        pxR=c(j,Rind);
+        pxR=c(j,Rind)/100; %rescale back
         if any(pxR>1)
            pxR=pxR./max(pxR); %normalize to 1 
         end
-        pxR0=c(j,R0ind);
+        pxR0=c(j,R0ind)/100;
         sZ=c(j,sZind);
         
         w=ones(length(pxR),1);
