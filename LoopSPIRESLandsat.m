@@ -27,10 +27,10 @@ function LoopSPIRESLandsat(basedir,R0list,Rlist,subsetmasklist,Ffile,...
 % el_cutoff - elevation cutoff, m
 %note subset is based of DEM, as L8 has different sized scenes for
 %different dates and everything is reprojected to match the dem
-%takes a while if not subsetting, e.g. p42r34 
+%takes a while if not subsetting, e.g. p42r34
 
 for i=1:length(Rlist)
-%for i=2:2
+    %for i=2:2
     rdir=fullfile(basedir,'sr',Rlist{i});
     r0dir=fullfile(basedir,'sr',R0list{i});
     [~,fpart]=fileparts(rdir);
@@ -42,39 +42,42 @@ for i=1:length(Rlist)
     CCfile=fullfile(basedir,'cc',fname);
     WaterMaskfile=fullfile(basedir,'watermask',fname);
     CloudMaskfile=fullfile(basedir,'cloudmask',fname);
-    sm=matfile(fullfile(basedir,subsetmasklist{i}));
-    hdr=sm.hdr;
-    fn=fieldnames(sm);
-    match=false;
-    j=1;
-    
-    while ~match && j<=length(fn)
-        out=regexp(fn{j},'.*mask','ONCE');
-        if ~isempty(out)
-           mask=sm.(fn{j});
-           match=true;
+    if ~isempty(subsetmasklist{i})
+        sm=matfile(fullfile(basedir,subsetmasklist{i}));
+        hdr=sm.hdr;
+        fn=fieldnames(sm);
+        match=false;
+        j=1;
+        
+        while ~match && j<=length(fn)
+            out=regexp(fn{j},'.*mask','ONCE');
+            if ~isempty(out)
+                mask=sm.(fn{j});
+                match=true;
+            end
+            j=j+1;
         end
-        j=j+1;
+        RefMatrix=RasterRef2RefMat(hdr.RasterReference);
+        [x,y]=pixcenters(RefMatrix,hdr.RasterReference.RasterSize,...
+            'makegrid');
+        if i >= 6 %wv switches to 0 is in study area,
+            mask=~mask;
+        end
+        x=x(mask);
+        y=y(mask);
+        
+        [r,c]=map2pix(RefMatrix,x,y);
+        subset=[min(r) max(r);min(c) max(c)];
+    else
+        subset=[];%no subset
     end
-    RefMatrix=RasterRef2RefMat(hdr.RasterReference);
-    [x,y]=pixcenters(RefMatrix,hdr.RasterReference.RasterSize,...
-        'makegrid');
-    if i >= 6 %wv switches to 0 is in study area,
-        mask=~mask;
-    end
-    x=x(mask);
-    y=y(mask);
-    
-    [r,c]=map2pix(RefMatrix,x,y);
-    subset=[min(r) max(r);min(c) max(c)];
     
     fIcefile=fullfile(basedir,'fice',fname);
-
+    
     out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
-    fsca_thresh,dust_rg_thresh,grain_thresh,dust_thresh,CCfile,...
-    WaterMaskfile,CloudMaskfile,fIcefile,...
-    el_cutoff,subset);
-
+        fsca_thresh,dust_rg_thresh,grain_thresh,dust_thresh,CCfile,...
+        WaterMaskfile,CloudMaskfile,fIcefile,el_cutoff,subset);
+    
     
     fn=fieldnames(out);
     outname=fullfile(outdir, [Rlist{i} '.mat']);
