@@ -63,9 +63,9 @@ assert (mod(optargin,2)==0,'must be even number of optional arguments')
 iStruct = parseInput(cosZ,substance,sensor,reflectance,varargin{:});
 
 % make sure wavelenghts long enough to get size of scatterer
-assert(convertUnits(max(iStruct.bandPass(:)),iStruct.waveUnit,'nm')>=1060,...
+assert(convertLengthUnits(max(iStruct.bandPass(:)),iStruct.waveUnit,'nm')>=1060,...
     'maximum wavelength must be >= %f %s to retrieve size of snow or cloud scatterer',...
-    convertUnits(1060,'nm',iStruct.waveUnit),iStruct.waveUnit)
+    convertLengthUnits(1060,'nm',iStruct.waveUnit),iStruct.waveUnit)
 
 % set unknowns and bounds
 S = SnowCloudLimits;
@@ -187,9 +187,9 @@ else
         % make sure wavelenghts short enough to get particulates
         if any(strcmpi(iStruct.solveFor,'dust')) ||...
                 any(strcmpi(iStruct.solveFor,'soot'))
-            assert(convertUnits(min(iStruct.bandPass(:)),lambdaUnits,'nm')<=700,...
+            assert(convertLengthUnits(min(iStruct.bandPass(:)),lambdaUnits,'nm')<=700,...
                 'minimum wavelength must be <= %f %s to retrieve dust or soot concentration',...
-                convertUnits(700,'nm',lambdaUnits),lambdaUnits)
+                convertLengthUnits(700,'nm',lambdaUnits),lambdaUnits)
         end
         [x,resnorm,residual,exitflag,output,lam,jacobian] =...
             lsqnonlin(@anySnow,x0,lb,ub);
@@ -321,7 +321,7 @@ iStruct.waveUnit = waveUnit;
 iStruct.substance = p.Results.substance;
 iStruct.cosZ = p.Results.cosZ;
 iStruct.reflectance = p.Results.reflectance;
-iStruct.WE = convertUnits(p.Results.we,p.Results.weunits,defaultWEunits);
+iStruct.WE = convertLengthUnits(p.Results.we,p.Results.weunits,defaultWEunits);
 
 % unknowns to solve for
 iStruct.solveFSCA = p.Results.fractional &&...

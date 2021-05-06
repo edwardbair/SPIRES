@@ -42,14 +42,14 @@ else
     % vectors must be row or column, but not both
     for k=1:length(varargin)
         if isrow(varargin{k})
-            varargin{k} = varargin{k}';
+            varargin{k} = varargin{k}.'; % must use the .' as variable might be complex
         end
     end
     n = find(~scalar);
     N = size(varargin{n(1)});
     for k=2:length(n)
         assert(isequal(N,size(varargin{n(k)})),...
-            'variable %d has different size than variable %d',n(k),n(1))
+            'variables that are not scalars must have same size, variable %d has different size than variable %d',n(k),n(1))
     end
     for k=1:length(varargin)
         if scalar(k)

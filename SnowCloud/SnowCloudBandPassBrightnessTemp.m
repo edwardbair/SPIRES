@@ -40,7 +40,7 @@ lambda = p.Results.lambda;
 assert(length(lambda)==2,'lambda must be a vector of length 2')
 
 % convert wavelengths to meters
-lambda = convertUnits(lambda,p.Results.lambdaUnits,'m');
+lambda = convertLengthUnits(lambda,p.Results.lambdaUnits,'m');
 passLambda = lambda;
 
 % other variables to pass to functions
