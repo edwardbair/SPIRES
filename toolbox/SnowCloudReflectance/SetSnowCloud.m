@@ -200,6 +200,7 @@ if chooseDefaultP
     fscript.SSA = radius2SSA(fscript.iceRadius,fscript.sizeUnit);
     if fscript.substance==waterCloud
         fscript.wetness = [];
+        fscript.waterConc = [];
     else
         fscript.wetness = 0;
     end
