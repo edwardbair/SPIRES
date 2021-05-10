@@ -15,8 +15,8 @@ if isempty(d)
 end
 %collection 2 surface reflectance
 if isempty(d)
-   d=dir(fullfile(ldir,'*_SR_B*.TIF'));
-   c2flag=true;
+    d=dir(fullfile(ldir,'*_SR_B*.TIF'));
+    c2flag=true;
 end
 if isempty(d)
     error('cannot find surface refl files');
@@ -30,7 +30,7 @@ for i=1:length(d)
         X=X*1e-4;
     end
     X(X==-9999)=NaN;
-
+    
     if i==1
         if c2flag %build mstruct from CRS info
             info=georasterinfo(fname);
@@ -54,7 +54,7 @@ for i=1:length(d)
             ProjectionStructure=geotiff2mstruct(info);
             RefMatrix=info.RefMatrix;
         end
-            RasterReference=refmatToMapRasterReference(RefMatrix,size(X));
+        RasterReference=refmatToMapRasterReference(RefMatrix,size(X));
         if ~isempty(target)
             R.bands=zeros([target.RasterReference.RasterSize length(d)]);
         else
@@ -69,11 +69,11 @@ for i=1:length(d)
                 ProjectionStructure,target.ProjectionStructure,'rasterref',...
                 target.RasterReference);
             R.ProjectionStructure=target.ProjectionStructure;
-        else
-            R.RefMatrix=RefMatrix;
-            R.RasterReference=RasterReference;
-            R.ProjectionStructure=ProjectionStructure;
         end
+    else
+        R.RefMatrix=RefMatrix;
+        R.RasterReference=RasterReference;
+        R.ProjectionStructure=ProjectionStructure;
     end
     R.bands(:,:,i)=X;
 end
