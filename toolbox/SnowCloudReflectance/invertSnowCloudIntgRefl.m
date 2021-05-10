@@ -1,5 +1,4 @@
-function [oStruct,varargout] = invertSnowCloudIntgRefl(solarTbl,...
-    reflectance,unknowns,varargin )
+function [oStruct,varargout] = invertSnowCloudIntgRefl(solarTbl,reflectance,unknowns,varargin )
 % [oStruct] = invertSnowCloudIntgRefl(solarTbl,reflectance,unknowns,prescription,prop/val )
 % [oStruct] = invertSnowCloudIntgRefl(__________, substance,prescription,prop/val )
 % [oStruct,stats] = invertSnowCloudIntgRefl(__________)
@@ -111,11 +110,10 @@ end
 
 % solving method depends on input
 passWeight = 1;
-useParallel=true;
 switch fscript.solutionMethod
     % inversion method lsqnonlin uses the signed differences between measurement and model
     case 'lsqnonlin'
-        options = optimset('Display','off','FinDiffType','central','UseParallel',useParallel);
+        options = optimset('Display','off','FinDiffType','central','UseParallel',true);
         [x,resnorm,residual,exitflag,output,lambda,jacobian] =...
             lsqnonlin(@SnowCloudDiff,x0,lb,ub,options); %#ok<ASGLU>
         stats.resnorm = resnorm;
@@ -128,7 +126,7 @@ switch fscript.solutionMethod
             warning('lsqnonlin: %s',output.message)
         end
     case 'spectralAngle'
-        options = optimset('Display','off','FinDiffType','central','UseParallel',useParallel);
+        options = optimset('Display','off','FinDiffType','central','UseParallel',true);
         [x,fval,exitflag,output,lambda,grad,hessian] =...
             fmincon(@SnowCloudSpectralAngle,x0,...
             [],[],[],[],lb,ub,[],options); %#ok<ASGLU>
@@ -196,8 +194,8 @@ end
         else
             doCorrFactor = false;
         end
-            [Rtbl,passP] = SnowCloudIntgRefl(passTbl,fscript,argc{:});
-            modelRefl = Rtbl.reflectance;
+        [Rtbl,passP] = SnowCloudIntgRefl(passTbl,fscript,argc{:});
+        modelRefl = Rtbl.reflectance;
         
         % correct for topography by recomputing measured reflectance, i.e.
         % if viewed normal to slope

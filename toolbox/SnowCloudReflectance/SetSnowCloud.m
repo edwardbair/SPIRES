@@ -9,7 +9,7 @@ function fscript = SetSnowCloud(callingFunction,varargin)
 %
 % (inspired by John D'Errico's slmset for the SLM toolbox, available on
 % the MATLAB File Exchange)
-% 
+%
 %First argument, required, is the calling function, usually by specifying
 %mfilename
 %
@@ -33,32 +33,32 @@ function fscript = SetSnowCloud(callingFunction,varargin)
 %%
 % Wavelength properties, either 'wavelength', 'bandPass', or 'sensor'/'band'
 %   must be specified, but not both
-% 'wavelength' ï¿½ vector if sensor is a spectrometer
+% 'wavelength' – vector if sensor is a spectrometer
 % 'bandPass' Nx2 matrix if sensor is multispectral (use [0.28 4] or [280 4000]
 %   to get full-spectrum albedo)
-% 'waveUnit' ï¿½ units for wavelength, no default (to prevent errors)
-% 'sensor' ï¿½ instead of 'wavelength' or 'bandPass', can specify spectrometer
+% 'waveUnit' – units for wavelength, no default (to prevent errors)
+% 'sensor' – instead of 'wavelength' or 'bandPass', can specify spectrometer
 %   or multispectral sensor, anything in the SensorTable.m function
 %   (if calling function is 'spectral', returns CentralWavelength, a
 %   vector, or if calling function is 'intg', returns Nx2 matrix)
-% 'bands' ï¿½ bands of the sensor, either numeric vector, cell vector, or
+% 'bands' – bands of the sensor, either numeric vector, cell vector, or
 %   categorical vector of bands,or, if omitted, all bands for that sensor
-% 'ignoreSolar' ï¿½ if false (default), solar radiation accounted for unless
+% 'ignoreSolar' – if false (default), solar radiation accounted for unless
 %   outside range of SolarScale.m
 %   if true, ignores solar radiation and just provides band-average
 %   reflectivity (this is needed to calculate emissivity)
 %   set to false automatically if sensor is a spectrometer
 %%
 % Properties applicable to either snow or cloud
-% 'sizeUnit' ï¿½ units for optically equivalent radius of snow grains (default
+% 'sizeUnit' – units for optically equivalent radius of snow grains (default
 %   'mum', none others accepted -- might fix sometime)
-% 'dust' ï¿½ mass fraction
-% 'dustRadius' ï¿½ same units as for optically equivalent snow grain radius
-% 'soot' ï¿½ mass fraction
-% 'sootRadius' ï¿½ same units as for optically equivalent snow grain radius
-% 'waterEquivalent' ï¿½ water equivalent, Inf if not specified but must be specified for cloud
-% 'weUnit' ï¿½ unit for measuring WE, default 'mm'
-% 'R0' ï¿½ reflectance of surface under cloud or snow, or, if 'WE' is not
+% 'dust' – mass fraction
+% 'dustRadius' – same units as for optically equivalent snow grain radius
+% 'soot' – mass fraction
+% 'sootRadius' – same units as for optically equivalent snow grain radius
+% 'waterEquivalent' – water equivalent, Inf if not specified but must be specified for cloud
+% 'weUnit' – unit for measuring WE, default 'mm'
+% 'R0' – reflectance of surface under cloud or snow, or, if 'WE' is not
 %   specified (or specified as Inf), then treat as a fractional snow mixed
 %   with dirt and/or vegetation.
 %   Specify as a scalar or, more commonly, as a table with columns wavelength
@@ -70,8 +70,8 @@ function fscript = SetSnowCloud(callingFunction,varargin)
 %   only in calculations involving wavelength-integrated emissivity
 %%
 % Properties applicable only to snow
-% 'wetness' ï¿½ water mass fraction (0 to 0.2)
-% 'fractionalCoverage' ï¿½ if 'waterEquivalent' is not specified (or is Inf)
+% 'wetness' – water mass fraction (0 to 0.2)
+% 'fractionalCoverage' – if 'waterEquivalent' is not specified (or is Inf)
 %   and R0 is a scalar or a vector in a table, then a 2-element vector [fSCA fOther]
 %   that sums to 1.0, or if
 %   R0 is a matrix in a table, then an N-element vector [fSCA fMem1 fMem2 fMem3 . . .]
@@ -82,20 +82,23 @@ function fscript = SetSnowCloud(callingFunction,varargin)
 %%
 % Properties applicable only to mixed clouds
 % In this case, the required radius argument is the size of the ice crystals
-% 'wetness' ï¿½ if 'substance' is 'mixed', water mass fraction (0 to 1)
+% 'wetness' – if 'substance' is 'mixed', water mass fraction (0 to 1)
 % 'waterRadius' - default 5 um, can be specified if 'mixed' (the required
 %   radius argument is the size of the ice crystals)
 %%
 % Properties about the radiative transfer calculations
-% 'lookup' ï¿½ Use lookup tables to calculate Mie variables, default true
+% 'lookup' – Use lookup tables to calculate Mie variables, default true
 % 'method' - (default is delta-Eddington, can specify by abbreviations)
 %   'meador' or 'hybrid' - for Meader-Weaver hybrid
 %   'delta' or 'eddington' - for delta-Eddington (like Wiscombe & Warren)
 %   'disort' (discrete ordinates)'
+% 'useParallel' - default false, beware of using true if passing to an
+%   inversion routine that also uses parallel processing to calculated
+%   gradients
 % (generally any 3- or more-letter abbreviation works)
 %% Properties about the inversion
-% 'solutionmethod' - default is 'lsqnonlin', alternative is 'spectralangle'
-%   (default of 3 or more letters works)
+% 'solutionmethod' - default is 'lsqnonlin', alternatives are 'spectralangle'
+%   or 'mixLSSA' (default of 3 or more letters works)
 
 %%
 narginchk(1,Inf)
@@ -200,11 +203,9 @@ if chooseDefaultP
         fscript.waterConc = [];
     else
         fscript.wetness = 0;
-        fscript.waterConc = 0;
     end
     fscript.fractionalCoverage = [];
     fscript.temperature = 273.16;
-    
     
     % defaults -- dust and soot
     fscript.dust = [];
@@ -219,6 +220,8 @@ if chooseDefaultP
     % defaults -- solution method for inversion
     fscript.doInverse = false;
     fscript.solutionMethod = 'lsqnonlin';
+    fscript.useParallel = false;
+    fscript.lsWt = 0.5;
 end
 
 %% parse input and check sizes
@@ -244,6 +247,7 @@ issens = false;
 isbandp = false;
 isradius = false;
 isSSA = false;
+isR0 = false;
 fscript.spectrometer = contains(callingFunction,'spectral','IgnoreCase',true);
 for k=1:length(varargin)
     if ischar(varargin{k})
@@ -285,6 +289,13 @@ for k=1:length(varargin)
                 fscript.iceRadius = [];
             end
         end
+        if ~isR0
+            isR0 = strcmpi(varargin{k},'R0');
+            if isR0
+                fscript.R0 = [];
+                fscript.fractionalCoverage = [];
+            end
+        end
     end
 end
 assert(sum([iswave issens isbandp])<=1,...
@@ -315,8 +326,6 @@ addParameter(p,validatestring('waterequivalent',{'waterequiv','waterequivalent',
     fscript.WE,@(x) isscalar(x) && x>0)
 addParameter(p,validatestring('weunit',{'weu','weunit'}),...
     fscript.weUnit,@ischar)
-addParameter(p,validatestring('waterConc',{'waterc','waterconc'}),...
-    fscript.waterConc,@(x) isscalar(x) && x<=1);
 addParameter(p,'r0',fscript.R0,r0Validation)
 addParameter(p,validatestring('temperature',{'tem','temp','temperature'}),...
     fscript.temperature,@(x) isscalar(x) && x>0)
@@ -349,13 +358,16 @@ end
 
 % radiative-transfer
 addParameter(p,validatestring('lookup',{'look','lookup'}),...
-    fscript.lookup,@islogical)
+    fscript.lookup,@(x) islogical(x) || isnumeric(x))
 addParameter(p,validatestring('method',{'meth','method'}),...
     fscript.method,@ischar)
+addParameter(p,validatestring('useparallel',{'usep','useparallel'}),...
+    fscript.useParallel,@(x) islogical(x) || isnumeric(x))
 
 % inversion
 addParameter(p,validatestring('solutionmethod',{'sol','soln','solu','solnmethod','solutionmethod'}),...
     fscript.solutionMethod,@ischar)
+addParameter(p,'lswt',fscript.lsWt,@isnumeric);
 
 % insert into structure
 parse(p,callingFunction,varargin{:})
@@ -565,7 +577,7 @@ if fscript.substance==snow
     if isempty(p.Results.wetness)
         fscript.wetSnow = false;
     else
-        fscript.wetSnow = true;
+        fscript.wetSnow = p.Results.wetness>0;
         if ~isempty(p.Results.wetness)
             fscript.wetness = p.Results.wetness;
         end
@@ -606,11 +618,11 @@ end
 
 % check that R0 and fractional coverage match
 if istable(fscript.R0) &&...
-        ismatrix(fscript.R0.reflectance) &&...
+        size(fscript.R0.reflectance,2)>1 &&...
         length(fscript.fractionalCoverage)>1
     assert(size(fscript.R0.reflectance,2)==length(fscript.fractionalCoverage)-1,...
-        'size mismatch, size(fscript.R0.reflectance)=[%d %d], length(fscript.fractionalCoverage)=%d',...
-        size(fscript.R0.reflectance),length(fscript.fractionalCoverage))
+        'size mismatch, size(fscript.R0.reflectance,2)=%d, length(fscript.fractionalCoverage)=%d',...
+        size(fscript.R0.reflectance,2),length(fscript.fractionalCoverage))
 end
 
 % radiative transfer
@@ -630,16 +642,20 @@ if strncmpi(p.Results.solutionmethod,'lsq',3)
     fscript.solutionMethod = 'lsqnonlin';
 elseif strncmpi(p.Results.solutionmethod,'spe',3)
     fscript.solutionMethod = 'spectralAngle';
-elseif strncmpi(p.Results.solutionmethod,'cor',3)
-    fscript.solutionMethod = 'spectralcorrelation';
+elseif strncmpi(p.Results.solutionmethod,'mix',3)
+    fscript.solutionMethod = 'mixLSSA';
+    fscript.lsWt = p.Results.lswt;
 else
     error('''solutionMethod'' ''%s'' not recognized',p.Results.solutionmethod)
 end
 
 %Mie lookup
-fscript.lookup = p.Results.lookup;
+fscript.lookup = logical(p.Results.lookup);
 
-% add SSA or radius to the output
+%parallel processing
+fscript.useParallel = logical(p.Results.useparallel);
+
+% add SSA or radius to the output and check sizes
 if isfield(fscript,'iceRadius')
     if ~isempty(fscript.iceRadius)
         fscript.SSA = radius2SSA(fscript.iceRadius,fscript.sizeUnit);
@@ -648,5 +664,43 @@ elseif isfield(fscript,'SSA')
     if ~isempty(fscript.SSA)
         fscript.iceRadius = SSA2radius(fscript.SSA,fscript.sizeUnit);
     end
-    
+end
+
+% check sizes against limits
+S = SnowCloudLimits;
+switch fscript.substance
+    case snow
+        fscript.iceRadius = resetLimits('snowRadius',...
+            fscript.iceRadius,S.snowRadius);
+        fscript.SSA = resetLimits('snowSSA',fscript.SSA,S.snowSSA);
+    case iceCloud
+        fscript.iceRadius = resetLimits('iceCloudRadius',...
+            fscript.iceRadius,S.iceCloudRadius);
+        fscript.SSA = resetLimits('iceCloudSSA',fscript.SSA,S.iceCloudSSA);
+    case waterCloud
+        fscript.waterRadius = resetLimits('waterCloudRadius',...
+            fscript.waterRadius,S.waterCloudRadius);
+    case mixedCloud
+        fscript.iceRadius = resetLimits('iceCloudRadius',...
+            fscript.iceRadius,S.iceCloudRadius);
+        fscript.SSA = resetLimits('iceCloudSSA',fscript.SSA,S.iceCloudSSA);
+        fscript.waterRadius = resetLimits('waterCloudRadius',...
+            fscript.waterRadius,S.waterCloudRadius);
+end
+end
+
+function outX=resetLimits(iden,inX,XLimits)
+t = inX<min(XLimits);
+if any(t)
+    warning('variable %s (%g) < minimum (%g), reset',...
+        iden,min(inX),min(XLimits))
+    inX(t) = min(XLimits);
+end
+t = inX>max(XLimits);
+if any(t)
+    warning('variable %s (%g) > maximum (%g), reset',...
+        iden,max(inX),max(XLimits))
+    inX(t) = max(XLimits);
+end
+outX = inX;
 end

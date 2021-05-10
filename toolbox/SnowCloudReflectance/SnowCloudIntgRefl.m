@@ -22,8 +22,9 @@ function [ T,varargout] = SnowCloudIntgRefl(varargin)
 % If solarTbl is not the first argument, then band-averaged reflectivity is
 % used.
 %
-%The following variable inputs specify the snow or cloud properties, by calling
-%SetSnowCloud (see that function for additional details)
+%The following variable inputs specify the snow or cloud properties, by
+%calling SetSnowCloud (see that function for additional details about input
+%of snow properties)
 %
 %The first values must be the substance, either 'snow', 'iceCloud',
 %'waterCloud', or 'mixedCloud' (any unambiguous abbreviation beginning
@@ -40,8 +41,9 @@ function [ T,varargout] = SnowCloudIntgRefl(varargin)
 % 'bands' – bands of the sensor, either numeric vector, cell vector, or
 %   categorical vector of bands,or, if omitted, all bands for that sensor
 % 'R0' - reflectance of underlying surface or non-snow part of pixel,
-%   scalar or table with columns wavelength and reflectance and the
-%   wavelength units specified in Table.Properties.VariableUnits
+%   scalar or table with columns 'wavelength' and 'reflectance' and the
+%   wavelength units specified in Table.Properties.VariableUnits, or if
+%   omitted assuming same as 'waveUnit'
 %
 %Values for 'radius' and 'cosZ' can be specified as scalars or vectors, but if
 %vectors they must be the same size. To get all combinations of radius/cosZ
@@ -118,7 +120,7 @@ iceCloud = categorical({'iceCloud'});
 mixedCloud = categorical({'mixedCloud'});
 switch P1.substance
     case {snow,iceCloud,mixedCloud}
-        [r,cz,wave] = ndgrid(unique(P1.iceRadius),unique(P1.cosZ),wv);
+        [r,cz,wave] = ndgrid(unique(P1.iceRadius(:)),unique(P1.cosZ(:)),wv);
         P1.iceRadius = r(:);
     case waterCloud
         [r,cz,wave] = ndgrid(unique(P1.waterRadius),unique(P1.cosZ),wv);
@@ -150,67 +152,102 @@ switch P1.substance
         rad = unique(P1.waterRadius);
         radName = 'waterRadius';
 end
+%assemble values to pass to bandPassRefl
+radCosPair = zeros(length(rad)*length(cosZ),2);
+reflMatrix = zeros(length(rad)*length(cosZ),...
+    length(P1.wavelength)/(length(rad)*length(cosZ)));
+n = 0;
 for kr=1:length(rad)
     for kc=1:length(cosZ)
         thisPair = P1.(radName)==rad(kr) & P1.cosZ==cosZ(kc);
         thisRefl = refl(thisPair,:);
-        w = P1.wavelength(thisPair);
-        
-        for b=1:size(P1.bandPass,1)
-            if exist('solarTbl','var')
-                if any(thisRefl(:)<0)
-                    pause
-                end
-                R = bandPassReflectance(w,P1.waveUnit,thisRefl,solarTbl.irradiance,...
-                    'bandPass',P1.bandPass(b,:),'irradWavelength',solarTbl.wavelength);
-            else
-                R = bandPassReflectance(w,P1.waveUnit,thisRefl,ones(size(thisRefl)),...
-                    'bandPass',P1.bandPass(b,:));
-            end
-            if ~isempty(P1.sensor)
-                thisTbl = table(P1.sensor,P1.bands(b),P1.bandPass(b,:),...
-                    rad(kr),cosZ(kr),P1.WE,R,...
-                    'VariableNames',...
-                    {'Sensor','Band','bandPass',radName,'cosZ','waterEquivalent','reflectance'});
-                thisTbl.Properties.VariableUnits =...
-                    {'','',P1.waveUnit,P1.sizeUnit,'',P1.weUnit,''};
-            else
-                thisTbl = table(P1.bandPass(b,:),rad(kr),cosZ(kc),P1.WE,R,'VariableNames',...
-                    {'bandPass',radName,'cosZ','waterEquivalent','reflectance'});
-                thisTbl.Properties.VariableUnits =...
-                    {P1.waveUnit,P1.sizeUnit,'',P1.weUnit,''};
-            end
-            if ~isempty(P1.dust)
-                addTbl = table(P1.dust,P1.dustRadius,'VariableNames',...
-                    {'dustConc','dustRadius'});
-                addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
-                thisTbl = [thisTbl addTbl]; %#ok<AGROW>
-            end
-            if ~isempty(P1.soot)
-                addTbl = table(P1.soot,P1.sootRadius,'VariableNames',...
-                    {'sootConc','sootRadius'});
-                addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
-                thisTbl = [thisTbl addTbl]; %#ok<AGROW>
-            end
-            if ~isempty(P1.wetness) && P1.substance~=waterCloud
-                addTbl = table(P1.wetness,unique(P1.waterRadius),'VariableNames',...
-                    {'wetness','waterRadius'});
-                addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
-                thisTbl = [thisTbl addTbl]; %#ok<AGROW>
-            end
-            if ~isempty(P1.fractionalCoverage)
-                addTbl = table(P1.fractionalCoverage,'VariableNames',...
-                    {'fractionalCoverage'});
-                addTbl.Properties.VariableUnits = {''};
-                thisTbl = [thisTbl addTbl]; %#ok<AGROW>
-            end
-            if kr==1 && kc==1 && b==1
-                T = thisTbl;
-            else
-                T = [T; thisTbl]; %#ok<AGROW>
-            end
+        n = n+1;
+        if n==1
+            w = P1.wavelength(thisPair); % same for all pairs
         end
+        radCosPair(n,:) = [rad(kr) cosZ(kc)];
+        reflMatrix(n,:) = thisRefl(:)';
     end
+end
+
+%all bandpasses and wavelengths at once
+if exist('solarTbl','var')
+    if isempty(P1.sensor)
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,solarTbl,...
+            'bandPass',P1.bandPass,'useParallel',P1.useParallel);
+    else
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,solarTbl,...
+            'sensor',P1.sensor,'band',P1.bands,'useParallel',P1.useParallel);
+    end
+else
+    if isempty(P1.sensor)
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,[],...
+            'bandPass',P1.bandPass,'useParallel',P1.useParallel);
+    else
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,[],...
+            'sensor',P1.sensor,'band',P1.bands,'useParallel',P1.useParallel);
+    end
+    
+end
+
+%results into table
+rad = radCosPair(:,1);
+cosZ = radCosPair(:,2);
+T = table;
+for k=1:length(rad)
+    thisRad = R(k,:)';
+    theseBands = P1.bands(:);
+    thisSize = repmat(rad(k),size(theseBands));
+    thisCos = repmat(cosZ(k),size(thisSize));
+    sens = repmat(P1.sensor,size(thisSize));
+    we = repmat(P1.WE,size(thisSize));
+    if ~isempty(P1.sensor)
+        thisTbl = table(sens,theseBands,P1.bandPass,thisSize,...
+            thisCos,we,thisRad,...
+            'VariableNames',...
+            {'Sensor','Band','bandPass',radName,'cosZ',...
+            'waterEquivalent','reflectance'});
+        thisTbl.Properties.VariableUnits =...
+            {'','',P1.waveUnit,P1.sizeUnit,'',P1.weUnit,''};
+    else
+        thisTbl = table(P1.bandPass,thisSize,thisCos,we,thisRad,...
+            'VariableNames',...
+            {'bandPass',radName,'cosZ','waterEquivalent','reflectance'});
+        thisTbl.Properties.VariableUnits =...
+            {P1.waveUnit,P1.sizeUnit,'',P1.weUnit,''};
+    end
+    if ~isempty(P1.dust)
+        addTbl = table(repmat(P1.dust,size(thisSize)),...
+            repmat(P1.dustRadius,size(thisSize)),...
+            'VariableNames',...
+            {'dustConc','dustRadius'});
+        addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    if ~isempty(P1.soot)
+        addTbl = table(repmat(P1.soot,size(thisSize)),...
+            repmat(P1.sootRadius,size(thisSize)),...
+            'VariableNames',...
+            {'sootConc','sootRadius'});
+        addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    if ~isempty(P1.wetness) && P1.substance~=waterCloud
+        addTbl = table(repmat(P1.wetness,size(thisSize)),...
+            repmat(unique(P1.waterRadius(:)),size(thisSize)),...
+            'VariableNames',...
+            {'wetness','waterRadius'});
+        addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    if ~isempty(P1.fractionalCoverage)
+        addTbl = table(repmat(P1.fractionalCoverage,size(thisSize)),...
+            'VariableNames',...
+            {'fractionalCoverage'});
+        addTbl.Properties.VariableUnits = {''};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    T = [T; thisTbl]; %#ok<AGROW>
 end
 if nargout>1
     varargout{1} = P1;

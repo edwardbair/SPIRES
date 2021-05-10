@@ -82,7 +82,7 @@ switch iStruct.substance
         else
             if iStruct.wetSnow
                 CRefIn = RefractiveIndex(iStruct.wavelength(:),'ice',iStruct.waveUnit).*(1-iStruct.wetness) +...
-                    RefractiveIndex(iStruct.wavelength(:),'water',iStruct.waveUnit).*iStruct.waterConc;
+                    RefractiveIndex(iStruct.wavelength(:),'water',iStruct.waveUnit).*iStruct.wetness;
                 M = MieSphere(iStruct.iceRadius(:),iStruct.sizeUnit,iStruct.wavelength(:),...
                     iStruct.waveUnit,'refindex',CRefIn);
             else
@@ -249,6 +249,9 @@ if iStruct.substance==snow && ~isempty(iStruct.fractionalCoverage)
     s = sum(iStruct.fractionalCoverage);
     if s~=1
         iStruct.fractionalCoverage = iStruct.fractionalCoverage/s;
+    end
+    if any(iStruct.fractionalCoverage>1) || any(iStruct.fractionalCoverage<0)
+        warning('some fractional coverages are either >1 or <0, check inputs')
     end
     % R0 same size as wavelength, or scalar, or interpolate, x # of non-snow endmembers
     if istable(iStruct.R0)

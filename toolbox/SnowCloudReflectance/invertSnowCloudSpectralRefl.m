@@ -15,12 +15,17 @@ function [oStruct,varargout] = invertSnowCloudSpectralRefl(Rval,unknowns,varargi
 %       reflectance values available (reasonable abbreviations work)
 %       for 'snow' - 'radius' or 'ssa', 'fSCA', 'wetness', 'waterEquivalent', 'dust',
 %           'dustRadius', 'soot', 'sootRadius', 'corrFactor' (cosS * muS)
+%           only for 'lsqnonlin' method,'lsWt' (only for 'mixLSSA' solution method)
 %       for 'iceCloud' - 'radius', 'waterEquivalent', 'dust', 'dustRadius', 'soot',
-%           'sootRadius'
+%           'sootRadius', ''lsWt' (only for 'mixLSSA' solution method)
 %       for 'waterCloud' - 'radius', 'waterEquivalent', 'dust', 'dustRadius', 'soot',
-%           'sootRadius'
+%           'sootRadius', 'lsWt' (only for 'mixLSSA' solution method)
 %       for 'mixedCloud' - 'radius', 'waterRadius', 'wetness', 'waterEquivalent',
-%           'dust','dustRadius', 'soot', 'sootRadius'
+%           'dust','dustRadius', 'soot', 'sootRadius',
+%           'lsWt' (only for 'mixLSSA' solution method)
+%       (in cases with 'mixLSSA', the lsWt is the fraction of the
+%       solution for the norm of the residuals where 1-lsWt is the
+%       fraction for the spectral angle)
 %
 %optional arguments all name-value pairs, except substance and prescription
 %arguments, if present, must come before the name-value pairs if either or
@@ -39,7 +44,8 @@ function [oStruct,varargout] = invertSnowCloudSpectralRefl(Rval,unknowns,varargi
 %   'radius' - effective optical radius of scatterer, scalar
 %   'ssa' - surface-specific area, kg/m^2, as an alternative to 'radius'
 %   'solutionMethod' - to solve the inversion, either 'lsqnonlin' (default)
-%       or 'spectralAngle'
+%       'spectralAngle', or 'mixLSSA' which uses both
+%
 %Output
 %   oStruct - snow or cloud properties, depending on inputs
 %Optional output
@@ -69,7 +75,7 @@ assert(length(unknowns)<=length(reflectance),...
     'length of reflectance vector must be >= number of unknowns')
 validStrings = {'fSCA','wetness','dust','dustRadius',...
     'soot','sootRadius','corrFactor','waterRadius','radius',...
-    'waterEquivalent','fractionalCoverage','ssa'};
+    'waterEquivalent','fractionalCoverage','ssa','lsWt'};
 equivStrings = {'fSCA','fractionalCoverage'};
 
 solveFor = cell(length(unknowns),1);
@@ -85,23 +91,27 @@ for k=1:length(unknowns)
 end
 
 % make sure wavelenghts long enough to get size of scatterer, if asked for
+wavelimitGrainSize = 1060; % nm
 if any(contains(solveFor,'iceRadius','IgnoreCase',true)) ||...
         any(contains(solveFor,'ssa','IgnoreCase',true)) ||...
         any(contains(solveFor,'waterRadius','IgnoreCase',true))
-    assert(convertLengthUnits(max(fscript.wavelength(:)),fscript.waveUnit,'nm')>=1060,...
+    assert(convertLengthUnits(max(fscript.wavelength(:)),...
+        fscript.waveUnit,'nm')>=wavelimitGrainSize,...
         'maximum wavelength must be >= %f %s to retrieve size of snow or cloud scatterer',...
-        convertLengthUnits(1060,'nm',fscript.waveUnit),fscript.waveUnit)
+        convertLengthUnits(wavelimitGrainSize,'nm',fscript.waveUnit),fscript.waveUnit)
 end
 % make sure wavelengths short enough to get dust or soot characterization
+wavelimitLAP = 700;
 if any(contains(solveFor,'dust','IgnoreCase',true)) ||...
         any(contains(solveFor,'soot','IgnoreCase',true))
-    assert(convertLengthUnits(min(fscript.wavelength(:)),fscript.waveUnit,'nm')<=700,...
+    assert(convertLengthUnits(min(fscript.wavelength(:)),...
+        fscript.waveUnit,'nm')<=wavelimitLAP,...
         'minimum wavelength must be <= %f %s to retrieve dust or soot properties',...
-        convertLengthUnits(700,'nm',fscript.waveUnit),fscript.waveUnit)
+        convertLengthUnits(wavelimitLAP,'nm',fscript.waveUnit),fscript.waveUnit)
 end
 
 % intial values and limits
-[x0,lb,ub,extraEndMember] = setBounds(solveFor,fscript);
+[x0,lb,ub,solveFor] = setBounds(solveFor,fscript);
 
 % make sure we're evaluating measurements from a spectrometer
 assert(fscript.spectrometer,[mfilename...
@@ -120,19 +130,26 @@ if istable(fscript.R0)
     else
         contam = 'dust';
     end
-    passWeight = 1;
-%     passWeight = spectralWeight(fscript.cosZ,fscript.wavelength,...
-%         fscript.waveUnit,R0.wavelength,R0.reflectance,contam);
+    passWeight = spectralWeight(fscript.cosZ,fscript.wavelength,...
+        fscript.waveUnit,R0.wavelength,R0.reflectance,contam);
 else
     passWeight = 1;
 end
 
 switch fscript.solutionMethod
+    % for all cases, run 1st with forward differences, then refine with
+    % central differences
     % inversion method lsqnonlin uses the signed differences between measurement and model
     case 'lsqnonlin'
-        options = optimset('Display','off','FinDiffType','central','UseParallel',true);
+        options = optimset('Display','off','FinDiffType','forward','UseParallel',true);
         [x,resnorm,residual,exitflag,output,lambda,jacobian] =...
             lsqnonlin(@SnowCloudDiff,x0,lb,ub,options); %#ok<ASGLU>
+        stats.resnorm_first = resnorm;
+        stats.output_first = output;
+        options = optimset('Display','off','FinDiffType','central',...
+            'UseParallel',true);
+        [x,resnorm,residual,exitflag,output,lambda,jacobian] =...
+            lsqnonlin(@SnowCloudDiff,x,lb,ub,options); %#ok<ASGLU>
         stats.resnorm = resnorm;
         stats.residual = residual;
         stats.exitflag = exitflag;
@@ -143,10 +160,26 @@ switch fscript.solutionMethod
             warning('lsqnonlin: %s',output.message)
         end
     case 'spectralAngle'
-        options = optimset('Display','off','FinDiffType','central','UseParallel',true);
+        options = optimset('Display','off','FinDiffType','forward',...
+            'UseParallel',true);
+        t = contains(solveFor,'fSCA','IgnoreCase',true) |...
+            contains(solveFor,'fEndMem','IgnoreCase',true);
+        if nnz(t)
+            Aeq = zeros(1,length(x0));
+            Aeq(t) = 1;
+            beq = 1;
+        else
+            Aeq = [];
+            beq = [];
+        end
         [x,fval,exitflag,output,lambda,grad,hessian] =...
-            fmincon(@SnowCloudSpectralAngle,x0,...
-            [],[],[],[],lb,ub,[],options); %#ok<ASGLU>
+            fmincon(@SnowCloudSpectralAngle,x0,[],[],Aeq,beq,lb,ub,[],options); %#ok<ASGLU>
+        stats.spectralAngle_first = fval;
+        stats.output_first = output;
+        options = optimset('Display','off','FinDiffType','central',...
+            'UseParallel',true);
+        [x,fval,exitflag,output,lambda,grad,hessian] =...
+            fmincon(@SnowCloudSpectralAngle,x,[],[],Aeq,beq,lb,ub,[],options); %#ok<ASGLU>
         stats.spectralAngle = fval;
         stats.exitflag = exitflag;
         stats.output = output;
@@ -156,30 +189,50 @@ switch fscript.solutionMethod
         if exitflag<=0
             warning('fmincon: %s',output.message);
         end
-        case 'spectralcorrelation'
-        options = optimset('Display','off','FinDiffType','central','UseParallel',true);
+    case 'mixLSSA'
+        options = optimset('Display','off','FinDiffType','forward',...
+            'UseParallel',true);
+        t = contains(solveFor,'fSCA','IgnoreCase',true) |...
+            contains(solveFor,'fEndMem','IgnoreCase',true);
+        if nnz(t)
+            Aeq = zeros(1,length(x0));
+            Aeq(t) = 1;
+            beq = 1;
+        else
+            Aeq = [];
+            beq = [];
+        end
         [x,fval,exitflag,output,lambda,grad,hessian] =...
-            fmincon(@SnowCloudSpectralCorrelation,x0,...
-            [],[],[],[],lb,ub,[],options); %#ok<ASGLU>
-        stats.spectralAngle = fval;
+            fmincon(@SnowCloudLSSA,x0,[],[],Aeq,beq,lb,ub,[],options); %#ok<ASGLU>
+        stats.diffNormSA_first = fval;
+        stats.output_first = output;
+        options = optimset('Display','off','FinDiffType','central',...
+            'UseParallel',true);
+        % set lsWt to an unknown
+        solveFor{end+1} = 'lsWt';
+        x(end+1) = .5;
+        lb(end+1) = 0;
+        ub(end+1) = 1;
+        Aeq(end+1) = 0;
+        [x,fval,exitflag,output,lambda,grad,hessian] =...
+            fmincon(@SnowCloudLSSA,x,[],[],Aeq,beq,lb,ub,[],options); %#ok<ASGLU>
+        stats.diffNormSA = fval;
         stats.exitflag = exitflag;
         stats.output = output;
-        %         stats.lambda = lambda;
-        %         stats.grad = grad;
-        %         stats.hessian = hessian;
-        if exitflag<=0
-            warning('fmincon: %s',output.message);
-        end
     otherwise
         error('''solutionMethod'' ''%s'' not recognized',fscript.solutionMethod)
 end
 
+% fractions sum to 1.0
+t = contains(solveFor,'fSCA','IgnoreCase',true) |...
+    contains(solveFor,'fEndMem','IgnoreCase',true);
+if any(t)
+    s = sum(x(t));
+    x(t) = x(t)/s;
+end
 % put solution into output structure
 for k=1:length(solveFor)
     oStruct.(solveFor{k}) = x(k);
-    if strcmpi(solveFor{k},'fSCA') && size(fscript.R0.reflectance,2)>1
-        oStruct.otherEndMem = [x(end) 1-x(end)-x(k)];
-    end
 end
 
 if nargout>1
@@ -191,22 +244,9 @@ end
 
     function diffR = SnowCloudDiff(x)
         % difference between measured and model snow or cloud reflectance
-        argc = cell(2*length(solveFor),1);
-        v = 1;
-        for m=1:length(solveFor)
-            if strcmpi(solveFor{m},'fSCA')
-                argc{v} = 'fractionalCoverage';
-                if extraEndMember
-                    argc{v+1} = [x(m) x(end) 1-x(m)-x(end)];
-                else
-                    argc{v+1} = [x(m) 1-x(m)];
-                end
-            else
-                argc{v} = solveFor{m};
-                argc{v+1} = x(m);
-            end
-            v = v+2;
-        end
+        
+        argc = setargc(x,solveFor);
+        
         % correct for topography either by recomputing effective modeled
         % reflectance (i.e. when viewed from above assuming flat surface)
         % or by recomputing reflectance on slope
@@ -223,6 +263,7 @@ end
         end
         [R,passP] = SnowCloudSpectralRefl(fscript,argc{:});
         modelRefl = R.refl;
+        
         % correct for topography by recomputing measured reflectance, i.e.
         % if viewed normal to slope
         if doCorrFactor
@@ -234,51 +275,52 @@ end
 
     function ang = SnowCloudSpectralAngle(x)
         % spectral angle between model and actual reflectance
+        argc = setargc(x,solveFor);
         
-        argc = cell(2*length(solveFor),1);
-        v = 1;
-        for m=1:length(solveFor)
-            if strcmpi(solveFor{m},'fSCA')
-                argc{v} = 'fractionalCoverage';
-                if extraEndMember
-                    argc{v+1} = [x(m) x(end) 1-x(m)-x(end)];
-                else
-                    argc{v+1} = [x(m) 1-x(m)];
-                end
-            else
-                argc{v} = solveFor{m};
-                argc{v+1} = x(m);
-            end
-            v = v+2;
-        end
         [R,passP] = SnowCloudSpectralRefl(fscript,argc{:});
         modelRefl = R.refl;
+        
         cosAng = dot(passWeight.*modelRefl,passWeight.*reflectance)/...
             (norm(passWeight.*modelRefl)*norm(passWeight.*reflectance));
         ang = acosd(cosAng);
     end
-function out = SnowCloudSpectralCorrelation(x)
-        % Corr between model and actual reflectance
+
+    function D = SnowCloudLSSA(x)
+        % weighted combination of norm of residuals and spectral angle
+        argc = setargc(x,solveFor);
         
-        argc = cell(2*length(solveFor),1);
-        v = 1;
-        for m=1:length(solveFor)
-            if strcmpi(solveFor{m},'fSCA')
-                argc{v} = 'fractionalCoverage';
-                if extraEndMember
-                    argc{v+1} = [x(m) x(end) 1-x(m)-x(end)];
-                else
-                    argc{v+1} = [x(m) 1-x(m)];
-                end
-            else
-                argc{v} = solveFor{m};
-                argc{v+1} = x(m);
-            end
-            v = v+2;
-        end
         [R,passP] = SnowCloudSpectralRefl(fscript,argc{:});
         modelRefl = R.refl;
-        rho=corr(modelRefl,reflectance);
-        out=acosd((rho+1)/2);
+        
+        cosAng = dot(passWeight.*modelRefl,passWeight.*reflectance)/...
+            (norm(passWeight.*modelRefl)*norm(passWeight.*reflectance));
+        sinAng = sin(acos(cosAng));
+        normResid = norm(passWeight.*(reflectance-modelRefl));
+        
+        D = passP.lsWt*normResid+(1-passP.lsWt)*sinAng;
     end
+end
+
+function argc=setargc(z,solveName)
+% argc vector must combine multiple endmembers into
+% fractional coverage vector, so length may be shorter than solveName
+tmem = contains(solveName,'fEndMem','IgnoreCase',true);
+argc = cell(1,2*nnz(~tmem));
+% set values for each unknown for this pass
+v = 1;
+for m=1:length(solveName)
+    if strcmpi(solveName{m},'fSCA')
+        argc{v} = 'fractionalCoverage';
+        argc{v+1} = z(m);
+        holdv = v+1;
+        v = v+2;
+    elseif contains(solveName{m},'fEndMem','IgnoreCase',true)
+        newvec = cat(2,argc{holdv},z(m));
+        argc{holdv} = newvec;
+    else
+        argc{v} = solveName{m};
+        argc{v+1} = z(m);
+        v = v+2;
+    end
+end
 end

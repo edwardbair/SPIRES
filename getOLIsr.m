@@ -8,23 +8,53 @@ function R=getOLIsr(ldir,target)
 
 %collection 1 on demand surface reflectance
 d=dir(fullfile(ldir,'*band*.tif'));
+c2flag=false;
 % collection 1 ard surface reflectance
 if isempty(d)
     d=dir(fullfile(ldir,'*SRB*.tif'));
+end
+%collection 2 surface reflectance
+if isempty(d)
+   d=dir(fullfile(ldir,'*_SR_B*.TIF'));
+   c2flag=true;
 end
 if isempty(d)
     error('cannot find surface refl files');
 end
 for i=1:length(d)
     fname=fullfile(d(i).folder,d(i).name);
-    X=single(geotiffread(fname));
+    X=single(readgeoraster(fname));
+    if c2flag
+        X=X*2.75e-5-0.2;
+    else
+        X=X*1e-4;
+    end
     X(X==-9999)=NaN;
-    X=X*1e-4;
+
     if i==1
-        info=geotiffinfo(fname);
-        RefMatrix=info.RefMatrix;
-        ProjectionStructure=geotiff2mstruct(info);
-        RasterReference=refmatToMapRasterReference(RefMatrix,size(X));
+        if c2flag %build mstruct from CRS info
+            info=georasterinfo(fname);
+            ProjectionStructure=defaultm('tranmerc');
+            ProjectionStructure.falseeasting=...
+                info.CoordinateReferenceSystem.ProjectionParameters.FalseEasting;
+            ProjectionStructure.falsenorthing=...
+                info.CoordinateReferenceSystem.ProjectionParameters.FalseNorthing;
+            ProjectionStructure.geoid=...
+                [info.CoordinateReferenceSystem.GeographicCRS.Spheroid.SemimajorAxis ...
+                info.CoordinateReferenceSystem.GeographicCRS.Spheroid.Eccentricity];
+            ProjectionStructure.origin=[...
+                info.CoordinateReferenceSystem.ProjectionParameters.LatitudeOfNaturalOrigin ...
+                info.CoordinateReferenceSystem.ProjectionParameters.LongitudeOfNaturalOrigin ...
+                0];
+            ProjectionStructure.scalefactor=...
+                info.CoordinateReferenceSystem.ProjectionParameters.ScaleFactorAtNaturalOrigin;
+            RefMatrix=RasterRef2RefMat(info.RasterReference);
+        else
+            info=geotiffinfo(fname);
+            ProjectionStructure=geotiff2mstruct(info);
+            RefMatrix=info.RefMatrix;
+        end
+            RasterReference=refmatToMapRasterReference(RefMatrix,size(X));
         if ~isempty(target)
             R.bands=zeros([target.RasterReference.RasterSize length(d)]);
         else

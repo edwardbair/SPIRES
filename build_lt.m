@@ -1,4 +1,4 @@
-function F=build_lt(sensor,bands)
+    function F=build_lt(sensor,bands)
 %input: sensor, string, e.g. 'LandsatOLI' or 'MODIS'
 %bands: 1xN vector indicating bands needed, e.g. 1:7
 % output: gridded interpolant with inputs: 

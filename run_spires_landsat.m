@@ -65,8 +65,9 @@ if ~isempty(subset)
     dem.hdr.RasterReference=refmatToMapRasterReference(dem.hdr.RefMatrix,...
         size(x));
     dem.Z=dem.Z(rl,cl);
-    solarZmat=ones(size(dem.Z)).*solarZ;
 end
+
+solarZmat=ones(size(dem.Z)).*solarZ;
 
 %get R0 refl and reproject to hdr
 R0=getOLIsr(r0dir,dem.hdr);
@@ -152,6 +153,7 @@ igrainradius(isnan(ifsca) | ifsca==0)=NaN;
 
 idust=single(o.dust);
 idust(igrainradius<=dust_rg_thresh)=0;
+idust(isnan(igrainradius))=NaN;
     
 out.fsca_raw=fsca_raw;
 out.fsca=ifsca;

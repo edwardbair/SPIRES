@@ -34,7 +34,7 @@ waterMin = [900 1070 1260];
 
 % wavelength range over the absorption bands
 allWave = [min(waterMin) max(iceMin)];
-w = convertUnits(w,p.Results.waveUnits,'nm');
+w = convertLengthUnits(w,p.Results.waveUnits,'nm');
 
 %check that wavelengths cover the absorption bands
 assert(min(w)<=min(allWave) && max(w)>=max(allWave),...
