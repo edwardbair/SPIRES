@@ -6,7 +6,7 @@ function radius = SSA2radius(ssa,radUnit)
 %Input
 % ssa - specific surface area of snow grain, in m^2/kg
 % radUnit - unit for output radius, typically 'mum' ('um') or 'mm' but any
-% metric length unit is okay, see convertLengthUnits.m for all possibilities
+% metric length unit is okay, see convertUnits.m for all possibilities
 %
 %Output
 % radius - equivalent spherical radius, in the units specified

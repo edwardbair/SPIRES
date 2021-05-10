@@ -72,7 +72,7 @@ if inputColumns
     x = x';
 end
 if nargout>1
-    if logical(x)
+    if islogical(x)
         newx = false(size(x));
     else
         newx = zeros(size(x));

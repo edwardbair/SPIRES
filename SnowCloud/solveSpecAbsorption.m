@@ -153,13 +153,13 @@ end
 
 % results into structure
 outS.fSCA = fSCA;
-outS.effectiveRadius = convertLengthUnits(effectiveRadius,passRadiusUnits,p.Results.radiusUnits);
+outS.effectiveRadius = convertUnits(effectiveRadius,passRadiusUnits,p.Results.radiusUnits);
 outS.radiusUnits = p.Results.radiusUnits;
 outS.wavelength = lambda;
 outS.waveUnits = p.Results.lambdaUnits;
 if ~cleanSnow
     outS.contamConc = contamConc;
-    outS.contamRadius = convertLengthUnits(contamRadius,defaultUnits,p.Results.radiusUnits);
+    outS.contamRadius = convertUnits(contamRadius,defaultUnits,p.Results.radiusUnits);
     outS.snowReflectance = SnowCloudSpectralReflectance(cosZ,outS.effectiveRadius,...
         p.Results.radiusUnits,lambda,p.Results.lambdaUnits,...
         'contam',p.Results.contam,'contamRadius',outS.contamRadius,...

@@ -170,16 +170,16 @@ else
             vfrac = mfrac./[917 1000];
             vfrac = vfrac/sum(vfrac);
             [ri,rw,WE,Qext,wQext] =...
-                checkSizes(convertLengthUnits(iStruct.radius,iStruct.sizeUnit,'m'),...
-                convertLengthUnits(iStruct.cloudRadius(k),iStruct.sizeUnit,'m'),...
+                checkSizes(convertUnits(iStruct.radius,iStruct.sizeUnit,'m'),...
+                convertUnits(iStruct.cloudRadius(k),iStruct.sizeUnit,'m'),...
                 iStruct.WE,M.Qext,D(1).Qext);
             tau = tauSnow(ri,WE,Qext)*vfrac(1)+tauCloud(rw,WE,wQext)*vfrac(2);
         case {'ice','snow','wetsnow'}
-            [r,WE,Qext] = checkSizes(convertLengthUnits(iStruct.radius,iStruct.sizeUnit,'m'),iStruct.WE,M.Qext);
+            [r,WE,Qext] = checkSizes(convertUnits(iStruct.radius,iStruct.sizeUnit,'m'),iStruct.WE,M.Qext);
             tau = tauSnow(r,WE,Qext);
         case 'water'
             [r,WE,Qext] =...
-                checkSizes(convertLengthUnits(iStruct.radius,iStruct.sizeUnit,'m'),...
+                checkSizes(convertUnits(iStruct.radius,iStruct.sizeUnit,'m'),...
                 iStruct.WE,M.Qext);
             tau = tauCloud(r,WE,Qext);
         otherwise
@@ -196,7 +196,7 @@ if iStruct.changeSize
     end
 end
 if nargout>1
-    varargout{1} = convertLengthUnits(iStruct.lambda,iStruct.waveUnit,iStruct.origWaveUnit);
+    varargout{1} = convertUnits(iStruct.lambda,iStruct.waveUnit,iStruct.origWaveUnit);
     if nargout>2
     varargout{2} = trans;
     end
@@ -276,23 +276,23 @@ else
     iStruct.origSize = size(lambda);
 end
 iStruct.mu0 = mu0(:);
-iStruct.radius = convertLengthUnits(radius(:),p.Results.radiusUnits,sizeUnit);
+iStruct.radius = convertUnits(radius(:),p.Results.radiusUnits,sizeUnit);
 iStruct.R0 = R0(:);
-iStruct.lambda = convertLengthUnits(lambda(:),p.Results.lambdaUnits,waveUnit);
+iStruct.lambda = convertUnits(lambda(:),p.Results.lambdaUnits,waveUnit);
 
 if iStruct.deepSnow
     iStruct.WE = p.Results.we;
 else
-    iStruct.WE = convertLengthUnits(p.Results.we,p.Results.weunits,'mm');
+    iStruct.WE = convertUnits(p.Results.we,p.Results.weunits,'mm');
 end
 
 if ~iStruct.cleanSnowCloud
     if iStruct.dustySnow
         dustConc = p.Results.dust;
         if p.Results.dustradius == S.defaultDustRadius
-            dustRadius = convertLengthUnits(p.Results.dustradius,S.unitsSize,iStruct.sizeUnit);
+            dustRadius = convertUnits(p.Results.dustradius,S.unitsSize,iStruct.sizeUnit);
         else
-            dustRadius = convertLengthUnits(p.Results.dustradius,...
+            dustRadius = convertUnits(p.Results.dustradius,...
                 p.Results.radiusUnits,iStruct.sizeUnit);
         end
         [iStruct.dustConc,iStruct.dustRadius,~] =...
@@ -301,9 +301,9 @@ if ~iStruct.cleanSnowCloud
     if iStruct.sootySnow
         sootConc = p.Results.soot;
         if p.Results.sootradius == S.defaultSootRadius
-            sootRadius = convertLengthUnits(p.Results.sootradius,S.unitsSize,iStruct.sizeUnit);
+            sootRadius = convertUnits(p.Results.sootradius,S.unitsSize,iStruct.sizeUnit);
         else
-            sootRadius = convertLengthUnits(p.Results.sootradius,...
+            sootRadius = convertUnits(p.Results.sootradius,...
                 p.Results.radiusUnits,iStruct.sizeUnit);
         end
         [iStruct.sootConc,iStruct.sootRadius,~] =...
@@ -316,10 +316,10 @@ if iStruct.wetSnow || iStruct.mixedPhase
     waterConc = p.Results.waterconc;
     if iStruct.mixedPhase
         if p.Results.cloudradius==S.defaultWaterCloudRadius
-            cloudRadius = convertLengthUnits(S.defaultWaterCloudRadius,S.unitsSize,...
+            cloudRadius = convertUnits(S.defaultWaterCloudRadius,S.unitsSize,...
                 iStruct.sizeUnit);
         else
-            cloudRadius = convertLengthUnits(p.Results.cloudradius,...
+            cloudRadius = convertUnits(p.Results.cloudradius,...
                 p.Results.radiusUnits,iStruct.sizeUnit);
         end
         [iStruct.waterConc,iStruct.cloudRadius,~] = checkSizes(waterConc,cloudRadius,radius);

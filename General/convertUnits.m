@@ -33,9 +33,6 @@ function [ value ] = convertUnits( inputValue, unitsFrom, varargin )
 %   add GHz, MHz, and 
 %   add invcm
 
-warning('Function %s DEPRECATED because of possible conflict with existing MATLAB function, use convertLengthUnits instead',...
-    mfilename);
-
 if nargin>2
     unitsTo = varargin{1};
 else

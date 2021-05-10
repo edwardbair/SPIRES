@@ -60,7 +60,7 @@ for k=1:N
 end
 % wavelength range over the absorption bands
 allWave = [400 1370];
-w = convertLengthUnits(w,p.Results.waveUnits,'nm');
+w = convertUnits(w,p.Results.waveUnits,'nm');
 
 %check that wavelengths cover the absorption bands
 assert(min(w)<=min(allWave) && max(w)>=max(allWave),...

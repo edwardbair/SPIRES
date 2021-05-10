@@ -1,4 +1,3 @@
-
 function [ R ] = SnowCloudReflectance(cosZ,substance,radius, radiusUnit, varargin)
 % [ R ] = SnowCloudReflectance(cosZ,substance,radius, radiusUnit, varargin)
 %reflectance of snow or cloud across band passes or sensor bands
@@ -234,16 +233,16 @@ end
 
 % convert in input are matrices, save to reconvert later
 iStruct.origSize = size(mu0);
-T = table(mu0(:),convertLengthUnits(radius(:),p.Results.radiusUnit,iStruct.sizeUnit),...
+T = table(mu0(:),convertUnits(radius(:),p.Results.radiusUnit,iStruct.sizeUnit),...
     WE(:),'VariableNames',{'cosZ','radius','WE'});
 
 if ~iStruct.cleanSnowCloud
     if iStruct.dustySnow
         if p.Results.dustradius == S.defaultDustRadius
-            dustRadius = convertLengthUnits(p.Results.dustradius,S.unitsSize,...
+            dustRadius = convertUnits(p.Results.dustradius,S.unitsSize,...
                 iStruct.sizeUnit);
         else
-            dustRadius = convertLengthUnits(p.Results.dustradius,...
+            dustRadius = convertUnits(p.Results.dustradius,...
                 p.Results.radiusUnit,iStruct.sizeUnit);
         end
         [dustConc,dustRadius,~,~] =...
@@ -254,9 +253,9 @@ if ~iStruct.cleanSnowCloud
     if iStruct.sootySnow
         sootConc = p.Results.soot;
         if p.Results.sootradius == S.defaultSootRadius
-            sootRadius = convertLengthUnits(p.Results.sootradius,S.unitsSize,'mum');
+            sootRadius = convertUnits(p.Results.sootradius,S.unitsSize,'mum');
         else
-            sootRadius = convertLengthUnits(p.Results.sootradius,...
+            sootRadius = convertUnits(p.Results.sootradius,...
                 p.Results.radiusUnit,'mum');
         end
         [sootConc,sootRadius,~,~] =...
@@ -271,10 +270,10 @@ if iStruct.wetSnow || iStruct.mixedPhase
     waterConc = p.Results.waterconc;
     if iStruct.mixedPhase
         if p.Results.cloudradius==S.defaultWaterCloudRadius
-            cloudRadius = convertLengthUnits(S.defaultWaterCloudRadius,S.unitsSize,...
+            cloudRadius = convertUnits(S.defaultWaterCloudRadius,S.unitsSize,...
                 iStruct.sizeUnit);
         else
-            cloudRadius = convertLengthUnits(p.Results.cloudradius,...
+            cloudRadius = convertUnits(p.Results.cloudradius,...
                 p.Results.radiusUnit,iStruct.sizeUnit);
         end
         [waterConc,cloudRadius,~] = checkSizes(waterConc,cloudRadius,radius);
@@ -299,7 +298,7 @@ function bandPass = getBands(p,iStruct)
 assert(xor(isempty(p.Results.bandpass),isempty(p.Results.sensor)),...
     'either ''bandPass'' or ''sensor''/''bands'' must be specified')
 if ~isempty(p.Results.bandpass)
-    bandPass = convertLengthUnits(p.Results.bandpass,p.Results.waveunit,iStruct.waveUnit);
+    bandPass = convertUnits(p.Results.bandpass,p.Results.waveunit,iStruct.waveUnit);
 else
     T = SensorTable(p.Results.sensor,iStruct.waveUnit);
     if isempty(p.Results.band)

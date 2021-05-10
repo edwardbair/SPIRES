@@ -155,7 +155,7 @@ if ~isempty(p.Results.startguess) % x0 provided
     x0 = p.Results.startguess(:)';
     % convert units if necessary
     if ~strcmp(p.Results.radiusUnits,defaultUnits)
-        x0(2) = convertLengthUnits(x0(2),p.Results.units,defaultUnits);
+        x0(2) = convertUnits(x0(2),p.Results.units,defaultUnits);
     end
     if cleanSnow
         assert(length(x0)==2,...
@@ -233,7 +233,7 @@ end
 % reflectance values at solution
 solvedReflectance = mixedR(x);
 if ~strcmp(p.Results.radiusUnits,defaultUnits)
-    effectiveRadius = convertLengthUnits(effectiveRadius,defaultUnits,p.Results.units);
+    effectiveRadius = convertUnits(effectiveRadius,defaultUnits,p.Results.units);
 end
 
 % results into structure

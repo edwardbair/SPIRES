@@ -225,7 +225,7 @@ for b=1:nBands
     wavesPerBand(b,:) = linspace(lambda(b,1),lambda(b,2),nWaves);
 end
 rIndex = RefractiveIndex(wavesPerBand,substance,'nm');
-M = MieSphere(radius,'mm',wavesPerBand,'nm','refindex',rIndex);
+M = MieSphere(radius,'mm',wavesPerBand,'nm','refindex',rIndex,'useParallel',true);
 % M = MieSphere(radius,'mm',wavesPerBand,'nm',rIndex);
 
 % optical depth
@@ -233,9 +233,9 @@ if isinf(waterEquivalent)
     tau = inf(size(M.Qext));
 else
     if strcmpi(object,'snow') || strcmpi(object,'cirrus')
-        tau = tauSnow(convertLengthUnits(radius,'mm','m'),waterEquivalent,M.Qext);
+        tau = tauSnow(convertUnits(radius,'mm','m'),waterEquivalent,M.Qext);
     else
-        tau = tauCloud(convertLengthUnits(radius,'mm','m'),waterEquivalent,M.Qext);
+        tau = tauCloud(convertUnits(radius,'mm','m'),waterEquivalent,M.Qext);
     end
 end
 

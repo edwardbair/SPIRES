@@ -57,9 +57,8 @@ end
 snowDiff = normalize((R1.refl-R2.refl)+(R2.refl-R3.refl),'range');
 
 % solar transmittance
-% solarTrans = SolarScale(lambda,'units',lambdaUnits,'location','ratio');
-solarTrans = SolarScale('wavelength',lambda,'units',lambdaUnits);
-w = double(normalize(mean([snowDiff backDiff],2).*solarTrans.Global,'range'));
+solarTrans = SolarScale(lambda,'units',lambdaUnits,'location','ratio');
+w = double(normalize(mean([snowDiff backDiff],2).*solarTrans,'range'));
 
 if isrow(lambda)
     F = fit(lambda',w','pchipinterp');

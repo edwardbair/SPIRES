@@ -51,8 +51,8 @@ if ~all(bandPass(:)>=min(lambda)) || ~all(bandPass(:)<=max(lambda))
 end
 
 %convert wavelengths to meters for Planck function
-lambda = convertLengthUnits(lambda,p.Results.lambdaUnits,'m');
-bandPass = convertLengthUnits(bandPass,p.Results.lambdaUnits,'m');
+lambda = convertUnits(lambda,p.Results.lambdaUnits,'m');
+bandPass = convertUnits(bandPass,p.Results.lambdaUnits,'m');
 
 % interpolation function for spectral emissivity
 Femiss = fit(lambda,spectralEmissivity,'pchip');
@@ -64,7 +64,7 @@ for k=1:size(bandPass,1)
 end
 
 % convert back to lambdaUnits^(-1)
-R = convertLengthUnits(R,p.Results.lambdaUnits,'m'); % note: arguments inverted because ^(-1)
+R = convertUnits(R,p.Results.lambdaUnits,'m'); % note: arguments inverted because ^(-1)
 
     function X = integrandR(wavelength)
         emiss = Femiss(wavelength)';

@@ -51,15 +51,15 @@ BandPass = sort(p.Results.lambda,2);
 Contaminant = p.Results.contam;
 ParticulateSize = p.Results.contamradius;
 % make sure wavelenghts long enough to get grain size
-assert(convertLengthUnits(max(BandPass(:)),lambdaUnits,'nm')>=1060,...
+assert(convertUnits(max(BandPass(:)),lambdaUnits,'nm')>=1060,...
     'maximum wavelength must be >= %f %s to retrieve grain size',...
-    convertLengthUnits(1060,'nm',lambdaUnits),lambdaUnits)
+    convertUnits(1060,'nm',lambdaUnits),lambdaUnits)
 % could be same time of day or different times
 assert(isscalar(cosineZ) || isequal(size(cosineZ),size(Reflectance)),...
     'if not scalar, cosZ must be same size as reflectance vector')
 
 % default values for bounds
-defaultGSbounds = convertLengthUnits(S.snowRadius,defaultUnits,GSunits);
+defaultGSbounds = convertUnits(S.snowRadius,defaultUnits,GSunits);
 % initial guess use mean of grain size range
 % reflectance close to linear w sqrt(grainSize) so use that
 initialGS = sqrt(mean(defaultGSbounds));
@@ -105,9 +105,9 @@ else % dirty snow
     end
     assert(nargout==3,'you need an output variable for the dust/soot concentration')
     % make sure wavelenghts short enough to get particulates
-    assert(convertLengthUnits(min(BandPass(:)),lambdaUnits,'nm')<=700,...
+    assert(convertUnits(min(BandPass(:)),lambdaUnits,'nm')<=700,...
         'minimum wavelength must be <= %f %s to retrieve particulate concentration',...
-        convertLengthUnits(700,'nm',lambdaUnits),lambdaUnits)
+        convertUnits(700,'nm',lambdaUnits),lambdaUnits)
     %initial guess
     if strcmpi(p.Results.contam,'dust')
         x0 = [sqrt(initialGS) mean(S.dust)];

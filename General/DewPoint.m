@@ -42,11 +42,7 @@ if strcmpi(substance,'ice')
     for k=1:numel(vp)
         if vp(k)<=es0 && vp(k)>0
             vpx = vp(k);
-            try
-                T(k) = fzero(@F_ice,[0 T0]);
-            catch
-                T(k) = fzero(@F_water,T0);
-            end
+            T(k) = fzero(@F_ice,[T0-150 T0]);
         end
     end
 else
