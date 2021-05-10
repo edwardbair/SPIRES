@@ -1,4 +1,3 @@
-
 function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdates,...
     hdfbasedir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,tolval,outloc,nameprefix)
 
@@ -8,7 +7,7 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdate
 % if tile is a cell vector, assumption is made to mosaic multiple tiles
 % together then crop/reproject to topofile. watermask, R0,& dustmask will
 % all be assumed to match topofile hdr for spatial info
-% r0dates - matesdates for background each tile image, e.g.
+% r0dates - mat dates for background each tile image, e.g.
 % datenum([2015 9 25; 2015 9 25; 2015 9 25]);
 % matdates - matdates for cube
 % hdfbasedir - where the MOD09GA HDF files live
