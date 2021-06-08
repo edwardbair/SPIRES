@@ -88,8 +88,6 @@ for i=1:sz(4) %for each day
     if tolval>0
     [c,im,~]=uniquetol(M,tolval*100,'ByRows',true,'DataScale',1,...
         'OutputAllIndices',true);
-
-%       [c,im]=speedyUniqueTol(M,tolval*100);
        im1=zeros(size(im));
     else
        c=M;
@@ -118,8 +116,6 @@ for i=1:sz(4) %for each day
         sZ=c(j,sZind);
         
         w=ones(length(pxR),1);
-        % [out,modelRefl] = ...
-        %speedyinvert(R,R0,solarZ,Ffile,shade,dustmask,shadebool,w)
 
        o=speedyinvert(pxR,pxR0,sZ,Ffile,shade,1,1,w);
        %fsca too low for grain size, set for interpolation
@@ -187,11 +183,6 @@ for i=1:sz(4) %for each day
         end
     end
     
-%     minRforDust=300;
-%     if mean(out.grainradius(:,i),'omitnan') < minRforDust
-%         tt=~isnan(out.grainradius(:,i));
-%         out.dust(tt,i)=0;
-%     end
     t2=toc(t1);
     fprintf('done w/ day %i in %g min\n',i,t2/60);  
 end

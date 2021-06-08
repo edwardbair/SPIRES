@@ -150,9 +150,6 @@ else
     idx=idx(:,:,1:N);
     %find latest occuring peak
     idx=max(idx,[],3);
-
-    %out.dust(out.fsca==0)=NaN;
-
     if fixpeak % set values after peak grain radius to peak   
     for i=1:size(idx,1)
         for j=1:size(idx,2)
