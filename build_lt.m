@@ -20,8 +20,7 @@ n=0;
 tic;
 for i=1:length(radius)
         for j=1:length(dust)
-%           for j=1:length(soot)
-            for k=1:length(solarZ)
+            parfor k=1:length(solarZ)
                     out=SnowCloudSpectralRefl('snow',...
                         'cosZ',cosd(solarZ(k)),...
                         'radius',radius(i),...

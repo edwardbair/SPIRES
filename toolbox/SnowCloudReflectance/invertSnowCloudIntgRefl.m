@@ -107,15 +107,19 @@ if any(contains(solveFor,'dust','IgnoreCase',true)) ||...
 end
 
 % intial values and limits
-[x0,lb,ub,extraEndMember] = setBounds(solveFor,fscript);
-
+[x0,lb,ub,variables] = setBounds(solveFor,fscript);
+if length(variables)>2
+   extraEndMember=1;
+else
+   extraEndMember=0;
+end
 % solving method depends on input
 passWeight = 1;
-useParallel=true;
+% useParallel=true;
 switch fscript.solutionMethod
     % inversion method lsqnonlin uses the signed differences between measurement and model
     case 'lsqnonlin'
-        options = optimset('Display','off','FinDiffType','central','UseParallel',useParallel);
+        options = optimset('Display','off','FinDiffType','central','UseParallel',fscript.useParallel);
         [x,resnorm,residual,exitflag,output,lambda,jacobian] =...
             lsqnonlin(@SnowCloudDiff,x0,lb,ub,options); %#ok<ASGLU>
         stats.resnorm = resnorm;
@@ -128,7 +132,7 @@ switch fscript.solutionMethod
             warning('lsqnonlin: %s',output.message)
         end
     case 'spectralAngle'
-        options = optimset('Display','off','FinDiffType','central','UseParallel',useParallel);
+        options = optimset('Display','off','FinDiffType','central','UseParallel',fscript.useParallel);
         [x,fval,exitflag,output,lambda,grad,hessian] =...
             fmincon(@SnowCloudSpectralAngle,x0,...
             [],[],[],[],lb,ub,[],options); %#ok<ASGLU>
@@ -149,7 +153,7 @@ end
 for k=1:length(solveFor)
     oStruct.(solveFor{k}) = x(k);
     if strcmpi(solveFor{k},'fSCA')
-        if size(fscript.R0.reflectance,2)>1
+        if length(variables)>2 %size(fscript.R0.reflectance,2)>1
             oStruct.otherEndMem = [x(end) 1-x(end)-x(k)];
         else
             oStruct.otherEndMem = 1-x(k);

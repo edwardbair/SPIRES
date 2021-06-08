@@ -210,8 +210,95 @@ for kr=1:length(rad)
                 T = [T; thisTbl]; %#ok<AGROW>
             end
         end
+        radCosPair(n,:) = [rad(kr) cosZ(kc)];
+         reflMatrix(n,:) = thisRefl(:)';
     end
 end
+
+%all bandpasses and wavelengths at once
+if exist('solarTbl','var')
+    if isempty(P1.sensor)
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,solarTbl,...
+            'bandPass',P1.bandPass,'useParallel',P1.useParallel);
+    else
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,solarTbl,...
+            'sensor',P1.sensor,'band',P1.bands,'useParallel',P1.useParallel);
+    end
+else
+    if isempty(P1.sensor)
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,[],...
+            'bandPass',P1.bandPass,'useParallel',P1.useParallel);
+    else
+        R = bandPassRefl(w,P1.waveUnit,reflMatrix,[],...
+            'sensor',P1.sensor,'band',P1.bands,'useParallel',P1.useParallel);
+    end
+    
+end
+
+%results into table
+rad = radCosPair(:,1);
+cosZ = radCosPair(:,2);
+T = table;
+for k=1:length(rad)
+    thisRad = R(k,:)';
+    if ~isempty(P1.bands) %bands is usually empty so had to change
+        theseBands = P1.bands(:);
+    else
+       theseBands=[1:size(P1.bandPass,1)]'; 
+    end
+    thisSize = repmat(rad(k),size(theseBands));
+    thisCos = repmat(cosZ(k),size(thisSize));
+    sens = repmat(P1.sensor,size(thisSize));
+    we = repmat(P1.WE,size(thisSize));
+    if ~isempty(P1.sensor)
+        thisTbl = table(sens,theseBands,P1.bandPass,thisSize,...
+            thisCos,we,thisRad,...
+            'VariableNames',...
+            {'Sensor','Band','bandPass',radName,'cosZ',...
+            'waterEquivalent','reflectance'});
+        thisTbl.Properties.VariableUnits =...
+            {'','',P1.waveUnit,P1.sizeUnit,'',P1.weUnit,''};
+    else
+        thisTbl = table(P1.bandPass,thisSize,thisCos,we,thisRad,...
+            'VariableNames',...
+            {'bandPass',radName,'cosZ','waterEquivalent','reflectance'});
+        thisTbl.Properties.VariableUnits =...
+            {P1.waveUnit,P1.sizeUnit,'',P1.weUnit,''};
+    end
+    if ~isempty(P1.dust)
+        addTbl = table(repmat(P1.dust,size(thisSize)),...
+            repmat(P1.dustRadius,size(thisSize)),...
+            'VariableNames',...
+            {'dustConc','dustRadius'});
+        addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    if ~isempty(P1.soot)
+        addTbl = table(repmat(P1.soot,size(thisSize)),...
+            repmat(P1.sootRadius,size(thisSize)),...
+            'VariableNames',...
+            {'sootConc','sootRadius'});
+        addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    if ~isempty(P1.wetness) && P1.substance~=waterCloud
+        addTbl = table(repmat(P1.wetness,size(thisSize)),...
+            repmat(unique(P1.waterRadius(:)),size(thisSize)),...
+            'VariableNames',...
+            {'wetness','waterRadius'});
+        addTbl.Properties.VariableUnits = {'',P1.sizeUnit};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    if ~isempty(P1.fractionalCoverage)
+        addTbl = table(repmat(P1.fractionalCoverage,size(thisSize)),...
+            'VariableNames',...
+            {'fractionalCoverage'});
+        addTbl.Properties.VariableUnits = {''};
+        thisTbl = [thisTbl addTbl]; %#ok<AGROW>
+    end
+    T = [T; thisTbl]; %#ok<AGROW>
+end
+
 if nargout>1
     varargout{1} = P1;
 end
