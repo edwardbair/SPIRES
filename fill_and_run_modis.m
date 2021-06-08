@@ -3,7 +3,7 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdate
 
 % fills input (mod09ga) and runs spires
 %input:
-% tiles - tilenames, e.g. 'h08v05'
+% tiles - - tilenames,  cell vector, e.g. {'h08v05','h08v04','h09v04'};
 % if tile is a cell vector, assumption is made to mosaic multiple tiles
 % together then crop/reproject to topofile. watermask, R0,& dustmask will
 % all be assumed to match topofile hdr for spatial info
