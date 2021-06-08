@@ -166,7 +166,7 @@ for kr=1:length(rad)
             w = P1.wavelength(thisPair); % same for all pairs
         end
         radCosPair(n,:) = [rad(kr) cosZ(kc)];
-        reflMatrix(n,:) = thisRefl(:)';
+         reflMatrix(n,:) = thisRefl(:)';
     end
 end
 
@@ -196,7 +196,11 @@ cosZ = radCosPair(:,2);
 T = table;
 for k=1:length(rad)
     thisRad = R(k,:)';
-    theseBands = P1.bands(:);
+    if ~isempty(P1.bands) %bands is usually empty so had to change
+        theseBands = P1.bands(:);
+    else
+       theseBands=[1:size(P1.bandPass,1)]'; 
+    end
     thisSize = repmat(rad(k),size(theseBands));
     thisCos = repmat(cosZ(k),size(thisSize));
     sens = repmat(P1.sensor,size(thisSize));

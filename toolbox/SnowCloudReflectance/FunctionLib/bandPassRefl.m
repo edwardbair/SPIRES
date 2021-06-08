@@ -1,4 +1,3 @@
-
 function [ R,varargout ] = bandPassRefl(lambda,lambdaUnit,spectralReflectance,solarRad,varargin)
 % [ R ] = bandPassRefl(lambda, lambdaUnit, spectralReflectance,
 %   spectralIrradiance, name/value pairs)

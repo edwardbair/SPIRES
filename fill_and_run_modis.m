@@ -1,4 +1,3 @@
-
 function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,r0dates,matdates,...
     hdfbasedir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,tolval,outloc,nameprefix)
 
