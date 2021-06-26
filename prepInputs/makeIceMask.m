@@ -32,15 +32,25 @@ YV=[min(lat); max(lat)];
 for i=1:length(S)
     xx=S(i).X;
     yy=S(i).Y;
-    t=isnan(xx) | isnan(yy);
-    xx=xx(~t);
-    yy=yy(~t);
+%     t=isnan(xx) | isnan(yy);
+%     xx=xx(~t);
+%     yy=yy(~t);
     in=inpolygon(xx,yy,XV,YV);
     if any(in(:))
         [x,y]=mfwdtran(hdr.ProjectionStructure,yy,xx);
         [r,c]=map2pix(RefMatrixB,x,y);
-        mask=poly2mask(c,r,size(gmaskBig,1),size(gmaskBig,2));
-        gmaskBig(mask)=true;
+        %build mask for each NaN separated polygon
+        t=find(isnan(xx) | isnan(yy));
+        for j=1:length(t)
+            if j==1
+               ind=1:(t(j)-1); 
+            else
+               ind=(t(j-1)+1):(t(j)-1);
+            end
+            mask=poly2mask(c(ind),r(ind),...
+                size(gmaskBig,1),size(gmaskBig,2));
+            gmaskBig(mask)=true;
+        end
     end
 end
 

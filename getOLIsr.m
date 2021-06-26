@@ -25,7 +25,14 @@ for i=1:length(d)
     fname=fullfile(d(i).folder,d(i).name);
     X=single(readgeoraster(fname));
     if c2flag
-        X=X*2.75e-5-0.2;
+        if i==1
+            bqafname=d(i).name;
+            bqaname=strrep(bqafname,'SR_B1','QA_PIXEL');
+            bqa=readgeoraster(fullfile(d(i).folder,bqaname));
+            S=unpackLandsat8BQA(bqa,'collection2'); 
+        end
+        X(S.fill)=NaN;
+        X=X*2.75e-5-0.2; %rescale
     else
         X=X*1e-4;
     end
@@ -63,8 +70,9 @@ for i=1:length(d)
     end
     
     if ~isempty(target)
-        if any(RefMatrix(:)~=target.RefMatrix(:))
-            % reproject if RefMatrices don't match
+        if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
+                any(size(X)~=target.RasterReference.RasterSize)
+            % reproject if RefMatrices or raster sizes don't match
             [X,R.RefMatrix,R.RasterReference]=rasterReprojection(X,RefMatrix,...
                 ProjectionStructure,target.ProjectionStructure,'rasterref',...
                 target.RasterReference);

@@ -3,9 +3,7 @@ function [ S ] = unpackLandsat8BQA( LS8_BQA, datatype )
 %unpack the bit-packed Quality Assurance (QA) layer in Landsat 8
 % Operatioal Land Imager (OLI) files. 
 %
-% As of January 2018 this can now handle precollection or collection 1
-% landsat 8 data. (https://landsat.usgs.gov/collectionqualityband)
-%
+% replaced precollection w/ Collection 2, NB 6/8/21
 %
 %   from USGS Landsat 8 webstie
 %   http://landsat.usgs.gov/L8QualityAssessmentBand.php
@@ -48,14 +46,14 @@ function [ S ] = unpackLandsat8BQA( LS8_BQA, datatype )
 
 switch lower(datatype)
     
-    case 'precollection'
+    case 'collection2'
         
-flagname = {'fill','frame','terrainOcclusion','reserved','water',...
-    'cloudShadow','veg','snow_ice','cirrus','cloud'};
-datatype = {'logical','logical','logical','logical','uint8','uint8',...
-    'uint8','uint8','uint8','uint8'};
-nbits = [1 1 1 1 2 2 2 2 2 2];
-bitPosition = [0 1 2 3 4 6 8 10 12 14];
+flagname = {'fill','dilatedCloud','cirrus','cloud','cloudShadow',...
+    'snow','clear','water','cloudConfidence','cloudShadowConfidence','snowIceConfidence','cirrusConfidence'};
+datatype = {'logical','logical','logical','logical','logical','logical',...
+    'logical','logical','uint8','uint8','uint8','uint8'};
+nbits = [1 1 1 1 1 1 1 1 2 2 2 2];
+bitPosition = [0 1 2 3 4 5 6 7 8 10 12 14];
 
     case 'collection1'
         
@@ -67,41 +65,20 @@ nbits = [1 1 2 1 2 2 2 2];
 bitPosition = [0 1 2 4 5 7 9 11];
 
     otherwise
-        error('cannot unpack LS8 data - not precollection or collection 1 data')
+        error('cannot unpack LS8 data')
         
 end
 
 N = LS8_BQA; % original 16-bit integers
-% Timbo's code, my rewritten version is below
-% for k=1:length(flagname)
-%     I = 2^nbits(k)-1; % fill the lower nbits(k), leave others 0
-%     if strcmp(datatype{k},'logical')
-%         S.(flagname{k}) = false(size(LS8_BQA));
-%         S.(flagname{k}) = bitand(N,I)>0;
-%     else
-%         S.(flagname{k}) = zeros(size(LS8_BQA),datatype{k});
-%         S.(flagname{k}) = cast(bitand(N,I),datatype{k});
-%     end
-%     if k~=3
-%         %move bits to read next quality value
-%         N = bitshift(N,-nbits(k));
-%     else
-%         %skip over unassigned bit 3
-%         N = bitshift(N,-2);
-%     end
-% end
+
 I = 2.^nbits-1;
 for k=1:length(flagname)
-    %if k~=4
         bitsToConsider = bitshift(N,-bitPosition(k));
         if strcmp(datatype{k},'logical')
-            %S.(flagname{k}) = bitand(N,I(k))>0;  %jeffs line - error i
-            %think
             S.(flagname{k}) = bitand(bitsToConsider,I(k))>0;
         else
             S.(flagname{k}) = cast(bitand(bitsToConsider,I(k)),datatype{k});
         end
-    %end
 end
 
 end
