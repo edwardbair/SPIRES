@@ -73,7 +73,10 @@ for i=1:sz(4) %for each day
     
     NDSI=(thisR(:,red_b)-thisR(:,swir_b))./...
          (thisR(:,red_b)+thisR(:,swir_b));
-    t=NDSI > -0.5  & ~daymask & ~isnan(thissolarZ) & all(~isnan(thisR),2);
+    %include NDSI > thresh, not masked, and no NaNs in any bands for R & R0
+    %
+    t=NDSI > -0.5  & ~daymask & ~isnan(thissolarZ) & all(~isnan(thisR),2) & ...
+        all(~isnan(R0),2);
     
     M=[round(thisR,2)*100 round(R0,2)*100 round(thissolarZ)]; 
     

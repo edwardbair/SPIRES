@@ -72,13 +72,10 @@ solarZmat=ones(size(dem.Z)).*solarZ;
 %get R0 refl and reproject to hdr
 R0=getOLIsr(r0dir,dem.hdr);
 
-nanmask=all(isnan(R0.bands),3);
-
 %snow-covered scene and reproject to hdr
 R=getOLIsr(rdir,dem.hdr);
 
 %load adjustment files
-
 adjust_vars={'cloudmask','fice','cc','watermask'};
 
 for i=1:length(adjust_vars)
@@ -121,7 +118,7 @@ thdr=m.hdr;
 end
 
 
-m=nanmask | A.cloudmask | A.watermask;
+m=A.cloudmask | A.watermask;
 
 o=run_spires(R0.bands,R.bands,solarZmat,Ffile,m,shade,...
     grain_thresh,dust_thresh,tolval,dem.hdr,red_b,swir_b,[]);
