@@ -143,7 +143,7 @@ ifsca(ifsca>0 & A.cc>0)=1;
 el_mask=dem.Z<el_cutoff;
 ifsca(el_mask)=0;
 
-% set masked values to zero
+% set masked values to nan
 ifsca(A.cloudmask | A.watermask)=NaN;
 
 igrainradius=single(o.grainradius);
@@ -160,7 +160,7 @@ out.grainradius=igrainradius;
 out.dust=idust;
 out.watermask=A.watermask;
 out.cloudmask=A.cloudmask;
-out.nodatamask=nanmask;
+out.nodatamask=isnan(fsca_raw);
 out.cc=A.cc;
 out.mu0=cosd(solarZ);
 
