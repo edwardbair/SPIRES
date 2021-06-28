@@ -143,8 +143,8 @@ ifsca(ifsca>0 & A.cc>0)=1;
 el_mask=dem.Z<el_cutoff;
 ifsca(el_mask)=0;
 
-% set pixels outside boundary, in cloudy mask, or in shade
-ifsca(nanmask | A.cloudmask | A.watermask)=NaN;
+% set masked values to zero
+ifsca(A.cloudmask | A.watermask)=NaN;
 
 igrainradius=single(o.grainradius);
 igrainradius(isnan(ifsca) | ifsca==0)=NaN;
