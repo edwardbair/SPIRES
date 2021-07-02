@@ -178,7 +178,8 @@ for i=1:sz(4) %for each day
     
     for j=1:length(outvars)
         out.(outvars{j})(t,i)=repxx(:,j);
-        tt=NDSI <= -0.5;
+        tt=NDSI <= -0.5  & ~daymask & ~isnan(thissolarZ) & all(~isnan(thisR),2) & ...
+        all(~isnan(R0),2);
         if strcmp(outvars{j}(1),'f') %set fsca/fshade to zero
             out.(outvars{j})(tt,i)=0;
         else

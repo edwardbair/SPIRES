@@ -165,7 +165,7 @@ if iStruct.substance==mixedCloud || iStruct.dustySnowCloud || iStruct.sootySnowC
         n = n+1;
     end
     conc = [1-sum(contamConc,2) contamConc];
-    mix = MieMixture(allM,AllRad,density,conc);
+    mix = mieMixture(allM,AllRad,density,conc);
     M = mix;
 end
 

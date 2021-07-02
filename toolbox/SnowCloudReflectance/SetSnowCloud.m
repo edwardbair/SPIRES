@@ -178,7 +178,7 @@ if chooseDefaultP
     % used only in inverse problem, from eqn Reff = R*cosS*muS/mu0;
     % corrFactor = cosS*muS
     fscript.corrFactor = [];
-    
+    fscript.useParallel=false;
     % defaults - snow or cloud
     fscript.sizeUnit = 'mum';
     if fscript.substance==snow
@@ -353,9 +353,11 @@ addParameter(p,validatestring('lookup',{'look','lookup'}),...
 addParameter(p,validatestring('method',{'meth','method'}),...
     fscript.method,@ischar)
 
+
 % inversion
 addParameter(p,validatestring('solutionmethod',{'sol','soln','solu','solnmethod','solutionmethod'}),...
     fscript.solutionMethod,@ischar)
+addParameter(p,'useParallel',fscript.useParallel,@islogical)
 
 % insert into structure
 parse(p,callingFunction,varargin{:})
