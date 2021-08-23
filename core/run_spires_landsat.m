@@ -3,8 +3,9 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
     WaterMaskfile,CloudMaskfile,fIcefile,...
     el_cutoff,subset)
 
-%run spires  for a landsat scene
-% r0dir - R0 directory, must contain geotiff surface reflectances from USGS
+%run spires  for a landsat scene, also works for Harmonized Senintel
+% Landsat: Sentinel 30 (HLS S30)
+% r0dir - R0 directory, must contain geotiff surface reflectance
 % rdir - R directory
 % demfile - matfile containing dem in m in same projection as R&R0
 % must contain: Z, elevation in m;
@@ -35,7 +36,6 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 %different dates and everything is reprojected to match the dem
 %takes a while if not subsetting, e.g. p42r34 
 
-
 %output
 % o struct with fields:
 % fsca,0-1, canopy cover adj
@@ -44,11 +44,23 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 % shade,0-1
 % all the size of the first two dimension of R or R0
 
-red_b=3;
-swir_b=6;
+%check name of first file to see if its HLS
+d=dir(fullfile(r0dir,'*.tif'));
+fn=d(1).name;
+switch fn(1:2)
+    case 'HL'
+        mode='HLS';
+        %SensorTableBandOrder = [1:8 9:12 8a]
+        red_b=4;
+        swir_b=11;
+    case 'L0'
+        mode='L8';
+        %SensorTableBandOrder = [1:7]
+        red_b=3;
+        swir_b=6;
+end
 
 t1=tic;
-
 solarZ=getOLIsolar(rdir);
 
 dem=load(demfile);
@@ -155,7 +167,7 @@ idust(isnan(igrainradius))=NaN;
     
 out.fsca_raw=fsca_raw;
 out.fsca=ifsca;
-out.fshade=fshade;
+out.fshade=single(fshade);
 out.grainradius=igrainradius;
 out.dust=idust;
 out.watermask=A.watermask;

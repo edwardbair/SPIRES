@@ -1,6 +1,7 @@
 function F=build_lt(sensor,bands)
 %input: sensor, string, e.g. 'LandsatOLI' or 'MODIS'
-%bands: 1xN vector indicating bands needed, e.g. 1:7
+%bands: 1xN vector indicating bands needed from sensor table, e.g. 1:7 for
+%L8 bands 1:7 or 1:13 for HSI bands 1-8,8a,9-12
 % output: gridded interpolant with inputs: 
 %grain size (um), dust (conc. by 
 % weight, ppm), solar zenith angle (deg), and band (N)

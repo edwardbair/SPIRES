@@ -30,13 +30,19 @@ t=cellfun(@isempty,gfcclist);
 gfcclist(t)=[];
     if ~isempty(gfcclist)
     [Big, BigRmap]=mosaicTiles(gfcclist,'tif','uint8',intmax('uint8'));
-    %Big will come out as geog
+    %Big will come out as geog, but uses NN to preserve integers
     cc=rasterReprojection(Big,BigRmap,[],...
         hdr.ProjectionStructure,'rasterref',hdr.RasterReference,'method','nearest');
-    cc=single(cc);
-    cc(cc>100)=0;
+    
+    %it appears 255 is the fill value, even though 220 is stated on the
+    %LPDAAC    
+    cc=double(cc);
+    cc(cc==255 | cc==220)=0;
+    cc(cc==210 | cc==211 | cc == 212)=NaN;
+    cc=inpaint_nans(cc,4);
     cc=cc./100;
-    cc(cc<0.01)=0;
+    cc(cc>1)=1; %fix overshoot
+    cc(cc<0.01)=0; %fix undershoot
     else
         status=1;
         cc=[];
