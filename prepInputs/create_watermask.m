@@ -1,7 +1,8 @@
-function watermask=create_watermask(hdr,watermask_dir)
+function watermask=create_watermask(RR,watermask_dir)
 %get lat lon
-        [lat,lon]=projinv(hdr.ProjectionStructure,...
-            hdr.RasterReference.XWorldLimits,hdr.RasterReference.YWorldLimits);
+%updates to use new map cells reference
+        [lat,lon]=projinv(RR.ProjectedCRS,...
+            RR.XWorldLimits,RR.YWorldLimits);
         
         xtile=0:4:140;
         lontile=-180:10:170;
@@ -38,7 +39,9 @@ function watermask=create_watermask(hdr,watermask_dir)
         end
         
         [Big,BigR]=mosaicTiles(tifnames(:),'tif','logical',int8(255));
-        watermask=rasterReprojection(Big,BigR,...
-            [],hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
+        inRR=refmatToGeoRasterReference(BigR,size(Big));
+        inRR.GeographicCRS=geocrs(4326); %wgs84
+        
+        watermask=rasterReprojection(Big,inRR,'rasterref',RR,...
             'Method','nearest');
 end

@@ -1,32 +1,30 @@
-function fice=makeIceMask(S,hdr,glims_res)
+function fice=makeIceMask(S,RR,glims_res)
 % make a fractional image of glacier ice
 %input: S - output from shapread of GLIMS polygons w/ M and Z data removed
-% hdr - hdr geo info for target
+% RR- mapcellref
 % glims_res - multiple of pixel size for rasterizing glims, e.g. 5
-gmask=false(hdr.RasterReference.RasterSize);
+gmask=true(RR.RasterSize);
 %create a higher res mask with 5% larger extent to deal with edge problems
 
 
-pixelsize=[hdr.RasterReference.CellExtentInWorldX/glims_res, ...
-    hdr.RasterReference.CellExtentInWorldY/glims_res];
+pixelsize=[RR.CellExtentInWorldX/glims_res, ...
+    RR.CellExtentInWorldY/glims_res];
 
 %extend image 5 pixels to deal w/ edges when reprojected
-Xlimit=[hdr.RasterReference.XWorldLimits(1)-hdr.RasterReference.CellExtentInWorldX*5 ...
-        hdr.RasterReference.XWorldLimits(2)+hdr.RasterReference.CellExtentInWorldX*5];
-Ylimit=[hdr.RasterReference.YWorldLimits(1)-hdr.RasterReference.CellExtentInWorldY*5 ...
-        hdr.RasterReference.YWorldLimits(2)+hdr.RasterReference.CellExtentInWorldY*5];
+Xlimit=[RR.XWorldLimits(1)-RR.CellExtentInWorldX*5 ...
+        RR.XWorldLimits(2)+RR.CellExtentInWorldX*5];
+Ylimit=[RR.YWorldLimits(1)-RR.CellExtentInWorldY*5 ...
+        RR.YWorldLimits(2)+RR.CellExtentInWorldY*5];
 
-
-[gmaskBig,RefMatrixB,RasterReferenceB]=rasterReprojection(gmask,hdr.RefMatrix,...
-    hdr.ProjectionStructure,hdr.ProjectionStructure,'method','nearest','PixelSize',...
-    pixelsize,'XLimit',Xlimit,'YLimit',Ylimit);
-
+[gmaskBig,RasterReferenceB]=rasterReprojection(gmask,RR,...
+     'outProj',RR.ProjectedCRS,'method','nearest','PixelSize',...
+     pixelsize,'XLimit',Xlimit,'YLimit',Ylimit);
+gmaskBig(:)=false;
 
 X=RasterReferenceB.XWorldLimits;
 Y=RasterReferenceB.YWorldLimits;
 bbox=[X(1) Y(1); X(2) Y(1);X(2) Y(2);X(1) Y(2)];
-[lat,lon]=minvtran(hdr.ProjectionStructure,...
-    bbox(:,1),bbox(:,2));
+[lat,lon]=projinv(RR.ProjectedCRS,bbox(:,1),bbox(:,2));
 XV=[min(lon); max(lon)];
 YV=[min(lat); max(lat)];
 for i=1:length(S)
@@ -37,8 +35,8 @@ for i=1:length(S)
 %     yy=yy(~t);
     in=inpolygon(xx,yy,XV,YV);
     if any(in(:))
-        [x,y]=mfwdtran(hdr.ProjectionStructure,yy,xx);
-        [r,c]=map2pix(RefMatrixB,x,y);
+        [x,y]=projfwd(RR.ProjectedCRS,yy,xx);
+        [r,c]=map2pix(RasterReferenceB,x,y);
         %build mask for each NaN separated polygon
         t=find(isnan(xx) | isnan(yy));
         for j=1:length(t)
@@ -54,7 +52,5 @@ for i=1:length(S)
     end
 end
 
-fice=rasterReprojection(single(gmaskBig),RefMatrixB,...
-    hdr.ProjectionStructure,hdr.ProjectionStructure,...
-    'rasterref',hdr.RasterReference);
+fice=rasterReprojection(single(gmaskBig),RasterReferenceB,'rasterref',RR);
 fice(fice<0.01)=0;

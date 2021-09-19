@@ -19,6 +19,7 @@ function out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
 % tolval - unique row tolerance value, i.e. 0.05 - bigger number goes faster
 % as more pixels are grouped together
 % hdr - header struct w/ map info, see GetCoordinateInfo.m
+% or RR - mapcellsref object with ProjectedCRS field
 % red_b - red band, e.g. 3 for MODIS and L8
 % swir_b - SWIR band, e.g. 6 for MODIS and L8
 % bweights - band weights MxNxd, empty if not used
@@ -34,12 +35,17 @@ outvars={'fsca','fshade','grainradius','dust'};
 
 sz=size(R);
 
+
 if length(sz) == 3
    sz(4)=1; % singleton 4th dimenson
 end
 
-[X,Y]=pixcenters(hdr.RefMatrix,size(mask),'makegrid');
-
+if isstruct(hdr)
+    %pix centers to be deprecated soon
+    [X,Y]=pixcenters(hdr.RefMatrix,size(mask),'makegrid');
+else %assume mapcellsreference
+    [X,Y]=worldGrid(hdr,'fullgrid');
+end
 
 for i=1:length(outvars)
     out.(outvars{i})=NaN([sz(1)*sz(2) sz(4)]);
