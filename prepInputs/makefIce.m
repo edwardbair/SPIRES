@@ -1,7 +1,7 @@
-function fice=makeIceMask(S,RR,glims_res)
+function fice=makefIce(S,RR,glims_res)
 % make a fractional image of glacier ice
-%input: S - output from shapread of GLIMS polygons w/ M and Z data removed
-% RR- mapcellref
+%input: S - output from shaperead of GLIMS polygons w/ M and Z data removed
+% RR- mapcellref, note needs newer v. of reprojectRaster w/ CRS support
 % glims_res - multiple of pixel size for rasterizing glims, e.g. 5
 gmask=true(RR.RasterSize);
 %create a higher res mask with 5% larger extent to deal with edge problems
@@ -16,6 +16,9 @@ Xlimit=[RR.XWorldLimits(1)-RR.CellExtentInWorldX*5 ...
 Ylimit=[RR.YWorldLimits(1)-RR.CellExtentInWorldY*5 ...
         RR.YWorldLimits(2)+RR.CellExtentInWorldY*5];
 
+% [gmaskBig,RasterReferenceB]=rasterReprojection(gmask,RR,...
+%      'outProj',RR.ProjectedCRS,'method','nearest','PixelSize',...
+%      pixelsize,'XLimit',Xlimit,'YLimit',Ylimit);
 [gmaskBig,RasterReferenceB]=rasterReprojection(gmask,RR,...
      'outProj',RR.ProjectedCRS,'method','nearest','PixelSize',...
      pixelsize,'XLimit',Xlimit,'YLimit',Ylimit);
