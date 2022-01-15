@@ -56,8 +56,8 @@ for j=1:Crow
         %
         % which values in WF are within threshold?
         t=(Cx(j,k)-Wx).^2+(Cy(j,k)-Wy).^2 < thresh;
-        Cbar(j,k)=nanmean(WF(t));
-        Cstddev(j,k)=nanstd(WF(t));
+        Cbar(j,k)=mean(WF(t),'omitnan');
+        Cstddev(j,k)=std(WF(t),'omitnan');
         Ccount(j,k)=nnz(~isnan(WF(t)));
     end
 end

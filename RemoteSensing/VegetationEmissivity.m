@@ -57,7 +57,7 @@ end
 if isempty(p.Results.lambda)
     error('unless ''help'' is specified as veg, lambda must be specified too')
 end
-lambda = convertUnits(p.Results.lambda,p.Results.units,'mum');
+lambda = convertLengthUnits(p.Results.lambda,p.Results.units,'mum');
 
 emiss = eInterp(lambda);
 

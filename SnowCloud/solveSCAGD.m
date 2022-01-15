@@ -143,7 +143,7 @@ if ~isempty(p.Results.startguess) % x0 provided
     x0 = p.Results.startguess(:)';
     % convert units if necessary
     if ~strcmp(p.Results.units,defaultUnits)
-        x0(3) = convertUnits(x0(3),p.Results.units,defaultUnits);
+        x0(3) = convertLengthUnits(x0(3),p.Results.units,defaultUnits);
     end
     x0(3) = sqrt(x0(3));
     if cleanSnow
@@ -223,7 +223,7 @@ if iscolumn(solvedReflectance)
     solvedReflectance = solvedReflectance';
 end
 if ~strcmp(p.Results.units,defaultUnits)
-    grainSize = convertUnits(grainSize,defaultUnits,p.Results.units);
+    grainSize = convertLengthUnits(grainSize,defaultUnits,p.Results.units);
 end
 
 %fill structure

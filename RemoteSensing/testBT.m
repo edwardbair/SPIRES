@@ -10,6 +10,7 @@ snowEmiss = 1-SnowCloudSensorReflectance(cosd(solarZ),250,'um','modis',band,...
 % snow fraction
 mod2 = 'c:\users\dozie\Box Sync\Data\MODIS';
 f = dir(fullfile(mod2,'*A2016*Endm*.h5'));
+modscagFile = cell(1,length(f));
 for k=1:length(f)
     modscagFile{k} = fullfile(mod2,f(k).name);
 end

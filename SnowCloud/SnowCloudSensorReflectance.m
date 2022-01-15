@@ -175,9 +175,9 @@ if ~strcmp(LUT.sensor,Results.sensor)
 end
 
 % units
-Results.radius = convertUnits(Results.radius,Results.radiusUnits,'mum');
+Results.radius = convertLengthUnits(Results.radius,Results.radiusUnits,'mum');
 if nVar==4
-    Results.we = convertUnits(Results.we,Results.weunits,'mm');
+    Results.we = convertLengthUnits(Results.we,Results.weunits,'mm');
 end
 
 R = zeros(length(Results.radius),length(Results.bands));

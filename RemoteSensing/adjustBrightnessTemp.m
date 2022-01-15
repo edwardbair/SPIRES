@@ -48,7 +48,7 @@ emiss = emiss(:);
 Tbfix = zeros(size(Tb));
 lambda = [X.LowerWavelength X.UpperWavelength];
 % wavelength in meters for calling Planck function
-lambdaM = convertUnits(lambda,'um','m');
+lambdaM = convertLengthUnits(lambda,'um','m');
 % reflected solar radiation, W/m^2, for each pixel
 solarRad = solar.*(1-emiss)*...
     integral(@SolarScale,lambda(1),lambda(2));

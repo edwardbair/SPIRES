@@ -24,7 +24,8 @@ function [ vp, varargout ] = SaturationVaporPressure(T,substance,units)
 
 assert(strcmpi(substance,'ice') || strcmpi(substance,'water'),...
     'substance (2nd argument) must be either ''ice'' or ''water''')
-assert(~any(T(:)<0), 'Temperatures must be in Kelvin')
+assert(~all(isnan(T(:))),'all temperatures are NaN')
+assert(~any(T(:)<0 & ~isnan(T(:))), 'Temperatures must be in Kelvin')
 
 persistent T0 k0 k1 k2 k3 k4 k5 g0 g1 g2 g3 g4 g5 g6 g7
 

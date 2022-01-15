@@ -66,53 +66,6 @@ cloudmask=false([sz0(1) sz0(2) sz0(4)]);
 pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
 bweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
-%create R0 based on r0dates
-% R0=zeros([sz0(1) sz0(2) sz0(3)]);
-% R0SZ=zeros([sz(1) sz(2)]);
-% R0SA=zeros([sz(1) sz(2)]);
-% if ~isempty(r0dates)
-%     for i=1:length(r0dates)
-%         tile=tiles{i};
-%         d=dir(fullfile(hdfbasedir,tile,['*.' tile '.*.hdf']));
-%         d=struct2cell(d);
-%         d=d(1,:);
-%         assert(~isempty(d),'%s empty\n',hdfbasedir);
-%         isodate=datenum2iso(r0dates(i),7);
-%         m=regexp(d,['^MOD09GA.A' num2str(isodate) '\.*'],'once');
-%         m=~cellfun(@isempty,m);
-%         assert(~isempty(m),'%s %s does not exist\n',tile,isodate);
-%         f=fullfile(hdfbasedir,tile,d{m});
-%         [x,y]=pixcenters(squeeze(R(i,:,:)),tsiz(i,:));
-%         [r,c]=map2pix(BigR,x,y);
-%         r=round(r);
-%         c=round(c);
-%         %get all band reflectance
-%         sr=GetMOD09GA(f,'allbands');
-%         R0(r,c,:)=sr;
-% 
-%         x=single(GetMOD09GA(f,'SolarZenith'));
-%         if any(isnan(x(:)))
-%             x = inpaint_nans(double(x),4);
-%         end
-%         x=imresize(x,tsiz(i,:));
-%         R0SZ(r,c)=imresize(x,tsiz(i,:));
-% 
-% 
-%         x=single(GetMOD09GA(f,'SolarAzimuth'));
-%         if any(isnan(x(:)))
-%             x = inpaint_nans(double(x),4);
-%         end
-%         x=imresize(x,tsiz(i,:));
-%         R0SA(r,c)=imresize(x,tsiz(i,:));
-%     end
-% 
-%     R0=rasterReprojection(R0,BigR,mstruct,hdr.ProjectionStructure,...
-%         'rasterref',hdr.RasterReference);
-%     R0(isnan(R0))=0;
-% else
-%     R0=[];
-% end
-
 parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     %allocate daily cubes
@@ -140,13 +93,6 @@ parfor i=1:length(matdates)
             r=round(r);
             c=round(c);
             f=fullfile(hdfbasedir,tile,d{m});
-%             try
-%                 frpintf('working on %s,f')
-%                 hdfinfo(f);
-%             catch
-%                 warning('could not get hdfinfo on %s',f)
-%                 continue
-%             end    
             [~,pxWeights,bWeights] = weightMOD09(f);
             bWeights=bWeights{1};
             bWeights=sum(bWeights,3);
@@ -197,19 +143,19 @@ parfor i=1:length(matdates)
         end
     end
 
-    refl_=rasterReprojection(refl_,BigR,mstruct,...
-        hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
-    cloudmask_=rasterReprojection(cloudmask_,BigR,mstruct,...
-        hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
+    refl_=rasterReprojection(refl_,BigR,'InProj',mstruct,...
+        'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+    cloudmask_=rasterReprojection(cloudmask_,BigR,'InProj',mstruct,...
+        'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
         'Method','nearest');
-    SolarZenith_=rasterReprojection(SolarZenith_,BigR,mstruct,...
-        hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
-    SensorZenith_=rasterReprojection(SensorZenith_,BigR,mstruct,...
-        hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
-    pxweights_=rasterReprojection(pxweights_,BigR,mstruct,...
-        hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
-    bweights_=rasterReprojection(bweights_,BigR,mstruct,...
-        hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+    SolarZenith_=rasterReprojection(SolarZenith_,BigR,'InProj',mstruct,...
+        'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+    SensorZenith_=rasterReprojection(SensorZenith_,BigR,'InProj',mstruct,...
+        'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+    pxweights_=rasterReprojection(pxweights_,BigR,'InProj',mstruct,...
+        'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
+    bweights_=rasterReprojection(bweights_,BigR,'InProj',mstruct,...
+        'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference);
 
     refl(:,:,:,i)=refl_;
     SolarZenith(:,:,i)=SolarZenith_;

@@ -17,7 +17,7 @@ phi0 = 180-O.obs(:,:,4);
 
 % solar angle on slope
 mu = sunslope(mu0,phi0,slope,aspect);
-corrFactor = secd(slope).*mu0./mu; % inverse of cosd(slope).*mu./mu0;
+corrFactor = mu0./mu; % inverse of mu./mu0;
 corrFactor(isinf(corrFactor)) = NaN;
 
 % corrected values

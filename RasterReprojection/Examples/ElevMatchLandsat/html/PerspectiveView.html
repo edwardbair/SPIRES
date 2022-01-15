@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge,IE=9,chrome=1"><meta name="generator" content="MATLAB 2021a"><title>Untitled</title><style type="text/css">.rtcContent { padding: 30px; } .S0 { margin: 2px 10px 9px 4px; padding: 0px; line-height: 21px; min-height: 0px; white-space: pre-wrap; color: rgb(0, 0, 0); font-family: Helvetica, Arial, sans-serif; font-style: normal; font-size: 14px; font-weight: 400; text-align: left;  }
+.CodeBlock { background-color: #F7F7F7; margin: 10px 0 10px 0;}
+.S1 { border-left: 1px solid rgb(233, 233, 233); border-right: 1px solid rgb(233, 233, 233); border-top: 1px solid rgb(233, 233, 233); border-bottom: 0px none rgb(0, 0, 0); border-radius: 4px 4px 0px 0px; padding: 6px 45px 0px 13px; line-height: 17.234px; min-height: 18px; white-space: nowrap; color: rgb(0, 0, 0); font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 14px;  }
+.S2 { border-left: 1px solid rgb(233, 233, 233); border-right: 1px solid rgb(233, 233, 233); border-top: 0px none rgb(0, 0, 0); border-bottom: 0px none rgb(0, 0, 0); border-radius: 0px; padding: 0px 45px 0px 13px; line-height: 17.234px; min-height: 18px; white-space: nowrap; color: rgb(0, 0, 0); font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 14px;  }
+.S3 { border-left: 1px solid rgb(233, 233, 233); border-right: 1px solid rgb(233, 233, 233); border-top: 0px none rgb(0, 0, 0); border-bottom: 1px solid rgb(233, 233, 233); border-radius: 0px 0px 4px 4px; padding: 0px 45px 4px 13px; line-height: 17.234px; min-height: 18px; white-space: nowrap; color: rgb(0, 0, 0); font-family: Menlo, Monaco, Consolas, "Courier New", monospace; font-size: 14px;  }</style></head><body><div class = rtcContent><div  class = 'S0'><span>view 3 bands of Landsat image overlaid on elevation after reprojecting elevation model in geographic format onto the Landsat frame, using the Landsat's raster reference</span></div><div class="CodeBlock"><div class="inlineWrapper"><div  class = 'S1'><span style="white-space: pre"><span style="color: rgb(14, 0, 255);">function </span><span >PerspectiveView()</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(2, 128, 9);">% load data</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >e = matfile(</span><span style="color: rgb(170, 4, 249);">'Elevation.mat'</span><span >);</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >m = matfile(</span><span style="color: rgb(170, 4, 249);">'LandsatData.mat'</span><span >);</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(2, 128, 9);">% display elevations in native format</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >Zs = double(e.Zs);</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >geoshow(Zs,e.Rs,</span><span style="color: rgb(170, 4, 249);">'DisplayType'</span><span >,</span><span style="color: rgb(170, 4, 249);">'surface'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >xlabel(</span><span style="color: rgb(170, 4, 249);">'Longitude'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >ylabel(</span><span style="color: rgb(170, 4, 249);">'Latitude'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >axis </span><span style="color: rgb(170, 4, 249);">equal tight</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >colormap(e.MATLABelevation)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >colorbar</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >title(</span><span style="color: rgb(170, 4, 249);">'elevations from SRTM, geographic format'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(2, 128, 9);">% display the SWIR-NIR-green Landsat bands</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >L = double(m.L8)/10000;</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >L = L(:,:,[6 5 3]);</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >M = zeros(size(L));</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(14, 0, 255);">for </span><span >k=1:size(L,3)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >    X = histeq(L(:,:,k));</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >    M(:,:,k) = X;</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(14, 0, 255);">end</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >figure</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >mapshow(M,m.LRR)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >title(</span><span style="color: rgb(170, 4, 249);">'Landsat 8 bands 6 5 3'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >xlabel(</span><span style="color: rgb(170, 4, 249);">'UTM Easting Zone 43N'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >ylabel(</span><span style="color: rgb(170, 4, 249);">'UTM Northing Zone 43N'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >axis </span><span style="color: rgb(170, 4, 249);">equal tight</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(2, 128, 9);">% reproject the elevations to match the Landsat image pixels by</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(2, 128, 9);">% specifying the Landsat raster reference</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >LRR = m.LRR;</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(14, 0, 255);">if </span><span >verLessThan(</span><span style="color: rgb(170, 4, 249);">'map'</span><span >,</span><span style="color: rgb(170, 4, 249);">'5.0'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >    matchElev = rasterReprojection(Zs,postings2cells(e.Rs),</span><span style="color: rgb(170, 4, 249);">'OutProj'</span><span >,m.UTM43,</span><span style="color: rgb(14, 0, 255);">...</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >        </span><span style="color: rgb(170, 4, 249);">'rasterref'</span><span >,m.LRR);</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(14, 0, 255);">else</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >    LRR.ProjectedCRS = projcrs(32643); </span><span style="color: rgb(2, 128, 9);">% UTM zone 43</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >    matchElev = rasterReprojection(Zs,postings2cells(e.Rs),</span><span style="color: rgb(170, 4, 249);">'rasterref'</span><span >,LRR);</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(14, 0, 255);">end</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span style="color: rgb(2, 128, 9);">% display the Landsat image overlaid on the elevations</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >[x,y] = pixcenters(m.LRR,size(matchElev));</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >figure</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >surf(x,y,matchElev,M,</span><span style="color: rgb(170, 4, 249);">'edgecolor'</span><span >,</span><span style="color: rgb(170, 4, 249);">'none'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >xlabel(</span><span style="color: rgb(170, 4, 249);">'UTM Easting Zone 43N'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >ylabel(</span><span style="color: rgb(170, 4, 249);">'UTM Northing Zone 43N'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >zlabel(</span><span style="color: rgb(170, 4, 249);">'Elevation'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >title(</span><span style="color: rgb(170, 4, 249);">'you can rotate the view'</span><span >)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'><span style="white-space: pre"><span >view(-32,69)</span></span></div></div><div class="inlineWrapper"><div  class = 'S2'></div></div><div class="inlineWrapper"><div  class = 'S3'><span style="white-space: pre"><span style="color: rgb(14, 0, 255);">end</span></span></div></div></div>
+<br>
+<!-- 
+##### SOURCE BEGIN #####
+function PerspectiveView()
+%  PERSPECTIVEVIEW view 3 bands of Landsat image overlaid on elevation after reprojecting elevation 
+% model in geographic format onto the Landsat frame, using the Landsat's raster 
+% reference
+% load data
+e = matfile('Elevation.mat');
+m = matfile('LandsatData.mat');
+% display elevations in native format
+Zs = double(e.Zs);
+geoshow(Zs,e.Rs,'DisplayType','surface')
+xlabel('Longitude')
+ylabel('Latitude')
+axis equal tight
+colormap(e.MATLABelevation)
+colorbar
+title('elevations from SRTM, geographic format')
+% display the SWIR-NIR-green Landsat bands
+L = double(m.L8)/10000;
+L = L(:,:,[6 5 3]);
+M = zeros(size(L));
+for k=1:size(L,3)
+    X = histeq(L(:,:,k));
+    M(:,:,k) = X;
+end
+figure
+mapshow(M,m.LRR)
+title('Landsat 8 bands 6 5 3')
+xlabel('UTM Easting Zone 43N')
+ylabel('UTM Northing Zone 43N')
+axis equal tight
+% reproject the elevations to match the Landsat image pixels by
+% specifying the Landsat raster reference
+LRR = m.LRR;
+if verLessThan('map','5.0')
+    matchElev = rasterReprojection(Zs,postings2cells(e.Rs),'OutProj',m.UTM43,...
+        'rasterref',m.LRR);
+else
+    LRR.ProjectedCRS = projcrs(32643); % UTM zone 43
+    matchElev = rasterReprojection(Zs,postings2cells(e.Rs),'rasterref',LRR);
+end
+% display the Landsat image overlaid on the elevations
+[x,y] = pixcenters(m.LRR,size(matchElev));
+figure
+surf(x,y,matchElev,M,'edgecolor','none')
+xlabel('UTM Easting Zone 43N')
+ylabel('UTM Northing Zone 43N')
+zlabel('Elevation')
+title('you can rotate the view')
+view(-32,69)
+end
+##### SOURCE END #####
+-->
+</div></body></html>
