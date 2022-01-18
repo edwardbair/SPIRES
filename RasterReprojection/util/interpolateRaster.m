@@ -19,8 +19,8 @@ else
         clsss(RR))
 end
 
-%memory check
-    RasterReprojectionMemoryCheck((numel(Xq)+numel(Yq))*8*size(A,3));
+%memory check, not needed
+%    RasterReprojectionMemoryCheck((numel(Xq)+numel(Yq))*8*size(A,3));
 
 %should have enough memory, go ...
 if ismatrix(A)

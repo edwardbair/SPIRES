@@ -213,12 +213,12 @@ elseif ~contains(origType,'double')
     % just signed or unsigned ints are the possibilities
     B = cast(round(B),origType);
 end
-if ~isnan(fillvalue)
-    B(t) = fillvalue;
-    if any(t,'all') && nargout<3
-        warning('output unknowns set to %g',fillvalue)
-    end
-end
+% if ~isnan(fillvalue)
+%     B(t) = fillvalue;
+%     if any(t,'all') && nargout<3
+%         warning('output unknowns set to %g',fillvalue)
+%     end
+% end
 
 % if original input was categorical, transform back from signed int
 if exist('categories','var')

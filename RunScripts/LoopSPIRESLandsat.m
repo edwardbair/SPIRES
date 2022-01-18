@@ -37,7 +37,7 @@ for i=1:length(Rlist)
     s=strsplit(fpart,'_');
     pathrow=['p' s{3}];
     pathrow=insertAfter(pathrow,4,'r');
-    demfile=fullfile(basedir,'dem',[pathrow,'_dem.mat']);
+    demfile=fullfile(basedir,'Z',[pathrow,'_dem.mat']);
     fname=[pathrow,'.mat'];
     CCfile=fullfile(basedir,'cc',fname);
     WaterMaskfile=fullfile(basedir,'watermask',fname);
@@ -57,16 +57,17 @@ for i=1:length(Rlist)
             end
             j=j+1;
         end
-        RefMatrix=RasterRef2RefMat(hdr.RasterReference);
-        [x,y]=pixcenters(RefMatrix,hdr.RasterReference.RasterSize,...
-            'makegrid');
+%         RefMatrix=RasterRef2RefMat(hdr.RasterReference);
+%         [x,y]=pixcenters(RefMatrix,hdr.RasterReference.RasterSize,...
+%             'makegrid');
+        [x,y]=worldGrid(hdr.RasterReference);
         if i >= 6 %wv switches to 0 is in study area,
             mask=~mask;
         end
         x=x(mask);
         y=y(mask);
-        
-        [r,c]=map2pix(RefMatrix,x,y);
+        [r,c]=worldToIntrinsic(hdr.RasterReference,x,y);
+%         [r,c]=map2pix(RefMatrix,x,y);
         subset=[min(r) max(r);min(c) max(c)];
     else
         subset=[];%no subset

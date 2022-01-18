@@ -10,7 +10,7 @@ function R=getOLIsr(ldir,target)
 %directory listing produces ascending sort of bands, except for HLS
 %collection 1 on demand surface reflectance
 d=dir(fullfile(ldir,'*band*.tif'));
-
+product='collection1';
 % collection 1 ard surface reflectance
 if isempty(d)
     d=dir(fullfile(ldir,'*SRB*.tif'));
@@ -85,9 +85,10 @@ for i=1:length(d)
         if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
                 any(size(X)~=target.RasterReference.RasterSize)
             % reproject if RefMatrices or raster sizes don't match
-            [X,R.RefMatrix,R.RasterReference]=rasterReprojection(X,RefMatrix,...
-                ProjectionStructure,target.ProjectionStructure,'rasterref',...
+            [X,R.RefMatrix,R.RasterReference]=rasterReprojection(X,RasterReference,...
+                'InProj',ProjectionStructure,'OutProj',target.ProjectionStructure,'rasterref',...
                 target.RasterReference);
+
             R.ProjectionStructure=target.ProjectionStructure;
         end
     else
