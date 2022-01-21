@@ -1,8 +1,9 @@
 function [ RefMatrix, varargout ] = sinusoidProjMODtile( tile )
 % [ RefMatrix ] = sinusoidProjMODtile( tile )
 % [ RefMatrix,ProjectionStructure ] = sinusoidProjMODtile( tile )
-% [ RefMatrix,ProjectionStructure,RasterReference,GeoKeyDirectoryTag ] = sinusoidProjMODtile( tile )
-% [ RefMatrix,ProjectionStructure,RasterReference,GeoKeyDirectoryTag,latlonCorners ] = sinusoidProjMODtile( tile )
+% [ RefMatrix,ProjectionStructure,RasterReference] = sinusoidProjMODtile( tile )
+% [ RefMatrix,ProjectionStructure,RasterReference,GeoKeyDirectoryTag] = sinusoidProjMODtile( tile )
+% [ RefMatrix,ProjectionStructure,RasterReference,GeoKeyDirectoryTag, latlonCorners ] = sinusoidProjMODtile( tile )
 %
 %Coordinate and projection information for any MODIS tile
 %
@@ -17,8 +18,10 @@ function [ RefMatrix, varargout ] = sinusoidProjMODtile( tile )
 %       converting from projection coordinates to latitude and longitude
 %   RasterReference - structure containing the mapRasterReference objects
 %       for each of the MODIS resolutions
+%   crs now appended as of 2021a to RR
 %   GeoKeyDirectoryTag - structure containing the various GeoKeys for input
 %       to a GeoTIFF file
+
 %   latlonCorners - latitudes and longitudes for each corner, counter-
 %       clockwise from upper left, 4x2 matrix with latitudes in column 1,
 %       longitudes in column 2
@@ -75,11 +78,16 @@ for k=1:nargout
             assert(length(rasterref)==length(refmat),...
                 'bug in code, length(rasterref)=%d, length(refmat)=%d',...
                 length(rasterref),length(refmat))
+            %R2021 update
+            crs=projcrs('PROJCS["MODIS Sinusoidal",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]],PROJECTION["Sinusoidal"],PARAMETER["false_easting",0.0],PARAMETER["false_northing",0.0],PARAMETER["central_meridian",0.0],PARAMETER["semi_major",6371007.181],PARAMETER["semi_minor",6371007.181],UNIT["m",1.0],AUTHORITY["SR-ORG","6974"]]');
             for gn=1:length(refmat)
                 RasterReference.(rasterref{gn}) =...
                     refmatToMapRasterReference(RefMatrix.(refmat{gn}),...
                     tilesize(gn,:));
+                RasterReference.(rasterref{gn}).ProjectedCRS=crs;
             end
+            
+            
             varargout{k-1} = RasterReference;
         case 4 % GeoKeyDirectoryTag
             CT_Sinusoidal = 24;
@@ -96,6 +104,7 @@ for k=1:nargout
         case 5 % lat-lon of corners
             [clat,clon] = MODtile2latlon(tile);
             varargout{k-1} = [clat clon];
+
         otherwise
             error('too many output arguments')
     end

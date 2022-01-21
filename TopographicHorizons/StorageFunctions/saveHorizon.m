@@ -227,8 +227,10 @@ end
             'FillValue',hfill,...
             'DataType',class(ihorizonsorz));
         h5write(h5file,[ group '/' dname],ihorizonsorz)
-        h5writeatt(h5file,[ group '/' dname],'Divisor',horizonScale);
-        h5writeatt(h5file,[ group '/' dname],'Units','degree');
+        h5writeatt(h5file,[ group '/' dname],'divisor',horizonScale);
+        h5writeatt(h5file,[ group '/' dname],'units','degree');
+
+
         if exist('distances','var')
             dname = 'distances';
             distanceScale = 1;
@@ -249,19 +251,19 @@ end
         
         % write Global Attributes
         if exist('proj','var')
-            PS = whos('proj');
-            h5create(h5file,['/' 'MapProjection'],PS.bytes)
-            h5writeProjection(h5file,['/' 'MapProjection'],proj)
+%           PS = whos('proj');
+%             h5create(h5file,['/Grid/' 'mapprojection'],PS.bytes)
+            h5writeProjection(h5file,'/Grid/' ,proj)
         end
         if exist('geoid','var')
             assert(isnumeric(geoid),...
                 'geoid must be numeric pair [SemimajorAxis Eccentricity]')
             
-            h5writeatt(h5file,'/','geoid',geoid)
+            h5writeatt(h5file,'/Grid/','geoid',geoid)
         end
         h5writeatt(h5file,group,'azimuths',azm(:).');
         sz = GetSize(R);
-        h5create(h5file,['/' 'SpatialRef'],sz)
-        h5writeSpatialRef(h5file, ['/' 'SpatialRef'],R)
+        h5create(h5file,['/Grid/' 'SpatialRef'],sz)
+        h5writeSpatialRef(h5file, ['/Grid/' 'SpatialRef'],R)
     end
 end

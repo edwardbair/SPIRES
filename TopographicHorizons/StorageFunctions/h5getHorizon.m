@@ -30,7 +30,7 @@ azm = p.Results.azimuth;
 [~,~,ext] = fileparts(h5file);
 assert(strcmpi(ext,'.h5'),'input must be HDF 5 file')
 info = h5info(h5file);
-siz = info.Groups(1).Datasets(1).ChunkSize;
+siz = info.Groups(end).Datasets(end).ChunkSize;
 FillValue = info.Groups(1).Datasets(1).FillValue;
 if ismatrix(siz)
     siz = [siz(1) siz(2) 1];
@@ -38,7 +38,7 @@ end
 
 % heading information
 angles = h5readatt(h5file,'/Grid','azimuths');
-divisor = h5readatt(h5file,'/Grid/horizons','Divisor');
+divisor = h5readatt(h5file,'/Grid/horizons','divisor');
 
 % horizon angles, get all if input azimuth empty
 if isempty(azm)

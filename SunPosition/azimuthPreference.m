@@ -7,7 +7,8 @@ function convertAzm = azimuthPreference()
 %If you want to use the MATLAB convertion for gradientm, set convertAzm to false.
 
 %comment out the option you don't want to use
-% convertAzm = true; % convert azimuths to 0° south, + to east, - to west
-convertAzm = false; % leave azimuths as clockwise from 0° north
+% kept as true for consistency w/ older code, despite non-convential usage 
+convertAzm = true; % convert azimuths to 0° south, + to east, - to west
+%convertAzm = false; % leave azimuths as clockwise from 0° north
 
 end
