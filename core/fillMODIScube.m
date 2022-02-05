@@ -1,5 +1,5 @@
 function [filledCube,refl,SolarZenith,SensorZenith,cloudmask,pxweights,...
-    bweights]=fillMODIScube(tiles,matdates,hdfbasedir,swir_b,hdr)
+    bweights]=fillMODIScube(tiles,matdates,hdfbasedir,net,hdr)
 %create gap filled (e.g. cloud-free) MOD09GA surface
 %reflectance
 
@@ -11,7 +11,7 @@ function [filledCube,refl,SolarZenith,SensorZenith,cloudmask,pxweights,...
 %topofile - h5 target topo file name. This topography file contains the target
 %geographic information that everything will be tiled and
 %cropped/reprojected to
-%swir_b - swir band, scalar
+%net - trained convolutional nueral network for cloud masking 
 %hdr - geog hdr struct
 %output:
 %filledCube: gap filled (cloud free) cube of MOD09GA values
@@ -24,7 +24,7 @@ function [filledCube,refl,SolarZenith,SensorZenith,cloudmask,pxweights,...
 
 nbands=7;
 % mask as cloud if swir band (6) is > than
-swir_cloud_thresh=0.2;
+% swir_cloud_thresh=0.2;
 
 if ~iscell(tiles)
     tiles={tiles};
@@ -129,11 +129,19 @@ parfor i=1:length(matdates)
             sr(isnan(sr))=0;
 
             %create cloud mask
-            S=GetMOD09GA(f,'state');
-            mod09gacm=imresize(S.cloud==1,tsiz(k,:));
-            swir=sr(:,:,swir_b);
-            cm = mod09gacm & swir > swir_cloud_thresh;
+%             S=GetMOD09GA(f,'state');
+%             mod09gacm=imresize(S.cloud==1,tsiz(k,:));
+%             swir=sr(:,:,swir_b);
+%             cm = mod09gacm & swir > swir_cloud_thresh;
 
+            %new MccM approach
+            I=pxFeatures(sr,nbands);
+            %scale to integers for CNN
+            scaleFactor=10000;
+            I=int16(I.*scaleFactor);
+            C = semanticseg(I,net);
+            cm = C == 'cloud' ;
+           
             sr(cm)=NaN; % mask clouds
 
             refl_(r,c,:)=sr;

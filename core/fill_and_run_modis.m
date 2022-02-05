@@ -1,6 +1,6 @@
 function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,R0,matdates,...
     hdfbasedir,topofile,mask,Ffile,shade,grain_thresh,dust_thresh,tolval,...
-    outloc,nameprefix)
+    outloc,nameprefix,net)
 
 % fills input (mod09ga) and runs spires
 %input:
@@ -24,6 +24,7 @@ function [out,fname,vars,divisor,dtype]=fill_and_run_modis(tiles,R0,matdates,...
 % pixels - scalar e.g. 0.05
 % outloc - path to write output
 % nameprefix - name prefix for outputs, e.g. Sierra
+% net - trained conv. NN for cloud masking
 %output:
 %   out:
 %   fsca: MxNxd
@@ -56,7 +57,7 @@ for i=1:length(m)
     if exist(fname,'file')==0 %don't overwrite existing files
         
         [R,~,solarZ,sensorZ,~,weights,~]=...
-            fillMODIScube(tiles,rundates,hdfbasedir,swir_b,hdr);
+            fillMODIScube(tiles,rundates,hdfbasedir,net,hdr);
         out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
             grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b,[]);
         out.weights=weights; %put weights into output struct

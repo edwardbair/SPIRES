@@ -51,8 +51,8 @@ elseif ndims(A)==3
 else
     error('arrays of more than 3 dimensions not supported')
 end
-if all(isnan(B(:)))
-    error('all interpolated values are NaN, check input and output coordinates')
-end
+% if all(isnan(B(:)))
+%     error('all interpolated values are NaN, check input and output coordinates')
+% end
 
 end

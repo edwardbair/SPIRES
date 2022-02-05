@@ -200,6 +200,7 @@ Acat = cat(2,AvecF,AvecB);
 [A,I] = sort(Acat);
 H = zeros(size(Hcat),'like',Hcat);
 D = zeros(size(Dcat),'like',Dcat);
+
 for k=1:size(H,3)
     H(:,:,k) = Hcat(:,:,I(k));
     D(:,:,k) = Dcat(:,:,I(k));
