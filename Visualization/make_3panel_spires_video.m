@@ -1,4 +1,4 @@
-function make_spires_video(infiles,target,pshape)
+function make_3panel_spires_video(infiles,target,pshape)
 %create reprojected spires MODIS video
 %infiles - cell, N*1 list of h5 files to read
 %output struct from smooth_and_run_modis

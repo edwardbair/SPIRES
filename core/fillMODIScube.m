@@ -129,11 +129,14 @@ parfor i=1:length(matdates)
             sr(isnan(sr))=0;
 
             %create cloud mask
-%             S=GetMOD09GA(f,'state');
+%              S=GetMOD09GA(f,'state');
 %             mod09gacm=imresize(S.cloud==1,tsiz(k,:));
 %             swir=sr(:,:,swir_b);
 %             cm = mod09gacm & swir > swir_cloud_thresh;
-
+        
+            %new salt pan mask
+%             spmask=imresize(S.saltpan==1,tsiz(k,:));
+            
             %new MccM approach
             I=pxFeatures(sr,nbands);
             %scale to integers for CNN
@@ -141,9 +144,8 @@ parfor i=1:length(matdates)
             I=int16(I.*scaleFactor);
             C = semanticseg(I,net);
             cm = C == 'cloud' ;
-           
-            sr(cm)=NaN; % mask clouds
-
+            sr(cm)=NaN
+%           sr(cm | spmask)=NaN; % mask clouds & salt pans
             refl_(r,c,:)=sr;
             cloudmask_(r,c)=cm;
 
