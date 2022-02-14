@@ -56,13 +56,13 @@ for i=1:length(m)
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);
     if exist(fname,'file')==0 %don't overwrite existing files
         
-        [R,solarZ,sensorZ,weights]=...
+        [R,~,solarZ,~,~,weights,~]=...
             fillMODIScube(tiles,rundates,hdfbasedir,net,hdr,red_b,swir_b);
         out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
             grain_thresh,dust_thresh,tolval,hdr,red_b,swir_b,[]);
         %write out these variables
         out.weights=weights; 
-        out.sensorZ=sensorZ; 
+        %out.sensorZ=sensorZ; 
         
         mfile=matfile(fname,'Writable',true);
         

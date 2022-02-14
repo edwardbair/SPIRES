@@ -69,7 +69,7 @@ elseif refl
     X(X<0) = NaN;
 elseif strncmpi(whichVariable,'state',5)
     X = unpackMOD09state(iX);
-elseif strncmpi(whichVariable,'qc',2);
+elseif strncmpi(whichVariable,'qc',2)
     X = unpackMOD09QC(iX);
 else
     X = iX;

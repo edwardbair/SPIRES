@@ -39,9 +39,9 @@ if exist(h5name,'file')
 else
     fprintf('reading %s...%s\n',datestr(matdates(1)),datestr(matdates(end)));
     %int vars
-    vars={'fsca','fshade','grainradius','dust','weights','sensorZ'};
-    divisor=[100 100 1 10 100 1];
-    dtype={'uint8','uint8','uint16','uint16','uint8','uint8'};
+    vars={'fsca','fshade','grainradius','dust','weights','cloudOrSnowMask'};
+    divisor=[100 100 1 10 100 ];
+    dtype={'uint8','uint8','uint16','uint16','uint8'};
     
     dv=datevec(matdates);
     dv=dv(dv(:,3)==1,:);
