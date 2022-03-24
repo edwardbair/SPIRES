@@ -30,8 +30,8 @@ function [ RefMatrix, varargout ] = sinusoidProjMODtile( tile )
 
 persistent already mstruct
 
-% tile sizes for 1km, 500m, 250m - hardwired
-tilesize = [1200 1200; 2400 2400; 4800 4800];
+% tile sizes for 1km, 500m, 250m, 375m(VIIRS) - hardwired
+tilesize = [1200 1200; 2400 2400; 4800 4800; 3000 3000];
 
 % loop through the possible arguments
 if nargout>1
@@ -54,7 +54,7 @@ for k=1:nargout
             y11 = ULy-pixelHeight/2; % negative because y(n)>y(n+1)
             
             % Referencing matrices
-            refmat = {'RefMatrix_1km','RefMatrix_500m','RefMatrix_250m'};
+            refmat = {'RefMatrix_1km','RefMatrix_500m','RefMatrix_250m', 'RefMatrix_375m'};
             assert(length(refmat)==length(pixelWidth),...
                 'number of referencing matrices (%d) does not equal number of tile sizes (%d)',...
                 length(refmat),length(pixelWidth))
@@ -74,7 +74,7 @@ for k=1:nargout
             end
             varargout{k-1} = mstruct;
         case 3 % map raster references
-            rasterref = {'RasterReference_1km','RasterReference_500m','RasterReference_250m'};
+            rasterref = {'RasterReference_1km','RasterReference_500m','RasterReference_250m', 'RasterReference_375m'};
             assert(length(rasterref)==length(refmat),...
                 'bug in code, length(rasterref)=%d, length(refmat)=%d',...
                 length(rasterref),length(refmat))

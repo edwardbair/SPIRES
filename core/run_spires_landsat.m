@@ -44,8 +44,8 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 % shade,0-1
 % all the size of the first two dimension of R or R0
 
-%check name of first file to see if its HLS
-d=dir(fullfile(r0dir,'*.tif'));
+%check name of first file to see if its HLS - usually HLS files are .tif and L8 are .TIF
+d=[dir(fullfile(r0dir,'*.tif')) dir(fullfile(r0dir,'*.TIF'))];
 fn=d(1).name;
 switch fn(1:2)
     case 'HL'
@@ -53,7 +53,7 @@ switch fn(1:2)
         %SensorTableBandOrder = [1:8 9:12 8a]
         red_b=4;
         swir_b=11;
-    case 'L0'
+    case 'LC'
         mode='L8';
         %SensorTableBandOrder = [1:7]
         red_b=3;
@@ -84,8 +84,11 @@ solarZmat=ones(size(dem.Z)).*solarZ;
 %get R0 refl and reproject to hdr
 R0=getOLIsr(r0dir,dem.hdr);
 
-%snow-covered scene and reproject to hdr
-R=getOLIsr(rdir,dem.hdr);
+%snow-covered scene and product quality/masks and reproject to hdr
+[R,cosm]=getOLIsr(rdir,dem.hdr);
+
+%out of scene Nan mask
+invalidPxMask = any(isnan(R.bands),3) | any(isnan(R0.bands),3);
 
 %load adjustment files
 adjust_vars={'cloudmask','fice','cc','watermask'};
@@ -114,8 +117,8 @@ thdr=m.hdr;
     if  any(dem.hdr.RefMatrix(:)~=thdr.RefMatrix(:)) || ...
                 any(dem.hdr.RasterReference.RasterSize~=thdr.RasterReference.RasterSize)
         A.(adjust_vars{i})=rasterReprojection(m.(adjust_vars{i}),...
-        thdr.RefMatrix,thdr.ProjectionStructure,...
-        dem.hdr.ProjectionStructure,'rasterref',...
+        thdr.RasterReference,'InProj',thdr.ProjectionStructure,...
+        'OutProj',dem.hdr.ProjectionStructure,'rasterref',...
         dem.hdr.RasterReference,'Method',method);
     else
         A.(adjust_vars{i})=m.(adjust_vars{i});
@@ -152,11 +155,14 @@ ifsca(ifsca<fsca_thresh)=0;
 ifsca(ifsca>0 & A.cc>0)=1;
 
 %elevation cutoff
-el_mask=dem.Z<el_cutoff;
-ifsca(el_mask)=0;
+%el_mask=dem.Z<el_cutoff;
+%ifsca(el_mask)=0;
+
+%zero out pixel that are not cloud or snow
+ifsca(~cosm)=0;
 
 % set masked values to nan
-ifsca(A.cloudmask | A.watermask)=NaN;
+ifsca(A.cloudmask | A.watermask | invalidPxMask)=NaN;
 
 igrainradius=single(o.grainradius);
 igrainradius(isnan(ifsca) | ifsca==0)=NaN;
@@ -177,7 +183,7 @@ out.cc=A.cc;
 out.mu0=cosd(solarZ);
 
 out.hdr=dem.hdr;
-
+out.R=R.bands;%REMOVE LATER
 et=toc(t1);
 fprintf('total elapsed time %4.2f min\n',et/60);
 end
