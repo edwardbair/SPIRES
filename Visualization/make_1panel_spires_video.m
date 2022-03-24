@@ -11,7 +11,8 @@ f.FrameRate=10;
 f.Quality=90;
 open(f);
 
-f1=figure('Position',[100   1   700   900],'Color','w');
+% f1=figure('Position',[100   1   1100 1100],'Color','w');
+f1=figure('Position',[100   1   1900  800],'Color','w');
     set(f1,'toolbar','none');
     set(gca,'NextPlot','replaceChildren');
       cm=colormap(parula);
@@ -27,15 +28,14 @@ lon_l=ceil(lon(1,1)):4:floor(lon(1,end));
     
 [x,y]=projfwd(rrb.ProjectedCRS,lat_l,mean(lon_l)*ones(size(lat_l)));
 [~,rlat]=worldToIntrinsic(rrb,x,y);
-    imagesc;
-    axis image;
-    
+    imagesc;    
     colormap(cm);
     set(gca,'YDir','reverse','Box','on','XTicklabel',[],'YTickLabel',[]);
     set(gca,'YTick',rlat,'YTickLabel',num2str(lat_l'));
     set(gca,'XTick',clon,'XTickLabel',num2str(lon_l'))
 for i=1:size(X,3)
-    imagesc(X(:,:,i));
+    imagesc(X(:,:,i),'AlphaData',~isnan(X(:,:,i)));
+    axis image;
     title(datestr(mdates(i)));
     frame=getframe(f1);
     writeVideo(f,frame)

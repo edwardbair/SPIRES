@@ -16,7 +16,7 @@ function [filledCube,SolarZenith,SensorZenith,pxweights]=...
 %red_b - red band, e.g. 3 for MODIS and L8
 %swir_b - SWIR band, e.g. 6 for MODIS and L8
 %output:
-%filledCube: gap filled (cloud free) cube of MOD09GA values
+%filledCube: cube of MOD09GA values w/ NaNs for clouds
 %SolarZenith: solar zenith angles for cube
 %SensorZenith: sensor zenith angles for cube
 %pxweights: weight cube for each pixel (all bands together), 0-1
@@ -62,23 +62,23 @@ BigRR=refmatToMapRasterReference(BigR,sz(1:2));
 %allocate 3 & 4D cubes with measurements for all days
 sz0=[hdr.RasterReference.RasterSize nbands length(matdates)];
 % refl=zeros(sz0);
-filledCube=zeros(sz0);
-SolarZenith=zeros([sz0(1) sz0(2) sz0(4)]);
-SensorZenith=zeros([sz0(1) sz0(2) sz0(4)]);
+filledCube=zeros(sz0,'single');
+SolarZenith=zeros([sz0(1) sz0(2) sz0(4)],'single');
+SensorZenith=zeros([sz0(1) sz0(2) sz0(4),'single']);
 % cloudmask=false([sz0(1) sz0(2) sz0(4)]);
-pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
+pxweights=zeros([sz0(1) sz0(2) sz0(4),'single']);
 % bweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
 parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     %allocate daily cubes
 %     refl_=NaN(sz);
-    filledCube_=NaN(sz);
-    SolarZenith_=NaN([sz(1) sz(2)]);
-    SensorZenith_=NaN([sz(1) sz(2)]);
+    filledCube_=NaN(sz,'single');
+    SolarZenith_=NaN([sz(1) sz(2)],'single');
+    SensorZenith_=NaN([sz(1) sz(2),'single']);
 %     SolarAzimuth_=NaN([sz(1) sz(2)]);
 %     cloudmask_=false([sz(1) sz(2)]);
-    pxweights_=zeros([sz(1) sz(2)]);
+    pxweights_=zeros([sz(1) sz(2),'single']);
 %     bweights_=zeros([sz(1) sz(2)]);
     %load up each tile
     for k=1:length(tiles)
@@ -125,7 +125,7 @@ parfor i=1:length(matdates)
             SensorZenith_(r,c) = imresize(x,tsiz(k,:));
 
             %get all band reflectance
-            filledCube=GetMOD09GA(f,'allbands');
+            sr=GetMOD09GA(f,'allbands');
             sr(isnan(sr))=0;
 
             %create cloud mask
@@ -163,7 +163,7 @@ parfor i=1:length(matdates)
             sr_swir_b(~cloudOrsnowMask)=1;
             sr(:,:,swir_b)=sr_swir_b;
 
-            filledCube(r,c,:)=sr;
+            filledCube_(r,c,:)=sr;
 %             refl_(r,c,:)=sr;
 %             cloudmask_(r,c)=cm;
 
@@ -177,12 +177,12 @@ parfor i=1:length(matdates)
 %     refl_=rasterReprojection(refl_,BigRR,'InProj',mstruct,...
 %         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
 %         'fillvalue',nan);
-    refl_=rasterReprojection(refl_,BigRR,'InProj',mstruct,...
+    filledCube_=rasterReprojection(filledCube_,BigRR,'InProj',mstruct,...
         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
         'fillvalue',nan);
-    cloudmask_=rasterReprojection(cloudmask_,BigRR,'InProj',mstruct,...
-        'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
-        'Method','nearest','fillvalue',0);
+%     cloudmask_=rasterReprojection(cloudmask_,BigRR,'InProj',mstruct,...
+%         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
+%         'Method','nearest','fillvalue',0);
     SolarZenith_=rasterReprojection(SolarZenith_,BigRR,'InProj',mstruct,...
         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
         'fillvalue',nan);

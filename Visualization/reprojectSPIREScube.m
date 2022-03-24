@@ -18,10 +18,14 @@ function [X,mdates,rrb]=reprojectSPIREScube(fname,endmember,x11,y11,x22,...
 % y22=-558000;
 %reproject cube
 
+minX=min(x(x(:)>0));
+
 [X,rrb]=rasterReprojection(x,hdr.RasterReference,...
     'InProj',hdr.ProjectionStructure,'OutProj',...
     target_p,'pixelsize',[px_sz px_sz],....
      'XLimit',[x11 x22],'YLimit',[y22 y11]);
+X(X<minX)=0;
+
 end
 
 %plot

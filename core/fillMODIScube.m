@@ -62,23 +62,23 @@ BigRR=refmatToMapRasterReference(BigR,sz(1:2));
 %allocate 3 & 4D cubes with measurements for all days
 sz0=[hdr.RasterReference.RasterSize nbands length(matdates)];
 % refl=zeros(sz0);
-filledCube=zeros(sz0);
-SolarZenith=zeros([sz0(1) sz0(2) sz0(4)]);
-SensorZenith=zeros([sz0(1) sz0(2) sz0(4)]);
+filledCube=zeros(sz0,'single');
+SolarZenith=zeros([sz0(1) sz0(2) sz0(4)],'single');
+SensorZenith=zeros([sz0(1) sz0(2) sz0(4)],'single');
 % cloudmask=false([sz0(1) sz0(2) sz0(4)]);
-pxweights=zeros([sz0(1) sz0(2) sz0(4)]);
+pxweights=zeros([sz0(1) sz0(2) sz0(4)],'single');
 % bweights=zeros([sz0(1) sz0(2) sz0(4)]);
 
 parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     %allocate daily cubes
 %     refl_=NaN(sz);
-    filledCube_=NaN(sz);
-    SolarZenith_=NaN([sz(1) sz(2)]);
-    SensorZenith_=NaN([sz(1) sz(2)]);
+    filledCube_=NaN(sz,'single');
+    SolarZenith_=NaN([sz(1) sz(2)],'single');
+    SensorZenith_=NaN([sz(1) sz(2)],'single');
 %     SolarAzimuth_=NaN([sz(1) sz(2)]);
 %     cloudmask_=false([sz(1) sz(2)]);
-    pxweights_=zeros([sz(1) sz(2)]);
+    pxweights_=zeros([sz(1) sz(2)],'single');
 %     bweights_=zeros([sz(1) sz(2)]);
     %load up each tile
     for k=1:length(tiles)

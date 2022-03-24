@@ -81,6 +81,7 @@ for i=1:length(m)
     else
         fprintf('%s already exists, skipping \n',fname);
     end
+    clear mfile out
 end
 t2=toc(t1);
 fprintf('completed in %5.2f hr\n',t2/60/60);
