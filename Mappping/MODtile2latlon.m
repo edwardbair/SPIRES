@@ -56,6 +56,9 @@ if ~isempty(resolution)
         case '1000m'
             RefMatrix = R.RefMatrix_1km;
             siz = [1200 1200];
+        case '375m'
+            RefMatrix = R.RefMatrix_375m;
+            siz = [3000 3000];
         otherwise
             error('''makegrid'', ''%s'' invalid, options are ''250m'', ''500m'' or ''1km''',...
                 resolution)

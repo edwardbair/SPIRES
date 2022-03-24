@@ -1,11 +1,14 @@
-function R=getOLIsr(ldir,target)
+function [R,cosm]=getOLIsr(ldir,target)
 %retrieve OLI surface refl
 %deals with collection 1 (on demand or ard),2, or HLS (S30)
 %input: ldir - directory of SR tifs, string
 %target - [] empty or target_hdr w/ fields RefMatrix and
 %ProjectionStructure and rasterref
-%output R - struct with fields bands, RefMatrix, ProjectionStructure,and
-%RasterReference
+%output:
+%   R - struct with fields bands, RefMatrix, ProjectionStructure,and
+%   RasterReference
+%   cosm - cloud or snow mask from BQA data.(use later to remove bright,
+%   warm, non snow pixels)
 
 %directory listing produces ascending sort of bands, except for HLS
 %collection 1 on demand surface reflectance
@@ -23,10 +26,10 @@ if isempty(d)
 end
 %HLS S30 surface reflectance
 if isempty(d)
-   d=dir(fullfile(ldir,'HLS*v*B*.tif'));
-   idx=[1:8 13 9:12]; %puts bands in ascending order of bandpass and discards angle files
-   d=d(idx);
-   product='HLS';
+    d=dir(fullfile(ldir,'HLS*v*B*.tif'));
+    idx=[1:8 13 9:12]; %puts bands in ascending order of bandpass and discards angle files
+    d=d(idx);
+    product='HLS';
 end
 if isempty(d)
     error('cannot find surface refl files');
@@ -44,7 +47,7 @@ for i=1:length(d)
                 bqafname=d(i).name;
                 bqaname=strrep(bqafname,'SR_B1','QA_PIXEL');
                 bqa=readgeoraster(fullfile(d(i).folder,bqaname));
-                S=unpackLandsat8BQA(bqa,'collection2'); 
+                S=unpackLandsat8BQA(bqa,'collection2');
             end
             X(S.fill)=NaN;
             X=X*2.75e-5-0.2; %rescale
@@ -85,10 +88,10 @@ for i=1:length(d)
         if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
                 any(size(X)~=target.RasterReference.RasterSize)
             % reproject if RefMatrices or raster sizes don't match
-            [X,R.RefMatrix,R.RasterReference]=rasterReprojection(X,RasterReference,...
+            [X,R.RasterReference]=rasterReprojection(X,RasterReference,...
                 'InProj',ProjectionStructure,'OutProj',target.ProjectionStructure,'rasterref',...
                 target.RasterReference);
-
+            R.RefMatrix=RasterRef2RefMat(R.RasterReference);
             R.ProjectionStructure=target.ProjectionStructure;
         end
     else
@@ -99,4 +102,36 @@ for i=1:length(d)
     R.bands(:,:,i)=X;
 end
 
+%output BQA mask for fsca adjustment, reproject if needed
+switch product
+    case {'collection1','HLS'}
+        %not yet written
+        cosm=[];
+    case 'collection2'
+        %S structure contains BQA info
+        %cloud or snow mask
+        %conservative cloud mask
+        cm=S.cloudConfidence==2|S.cloudConfidence==3;
+        cm=cm|S.cirrus|S.cloud|S.dilatedCloud;
+        sm=S.snow;
+        
+        %buffer snow mask for low fsca around edges of snowfields (~1k buffer)
+        SE1=strel('disk',35);
+        %SE2=strel('disk',5);
+
+        sm=imdilate(sm,SE1);
+        cosm= cm | sm; %& ~S.water;mask water later
+        %fill small holes in the cosm mask (~600m holes)
+        cosm = ~bwareaopen(~cosm, 20);
+        
+        if ~isempty(target)
+            if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
+                    any(size(X)~=target.RasterReference.RasterSize)
+                % reproject if RefMatrices or raster sizes don't match
+                cosm=rasterReprojection(cosm,RasterReference,...
+                    'InProj',ProjectionStructure,'OutProj',target.ProjectionStructure,'rasterref',...
+                    target.RasterReference,'method','nearest');
+            end
+        end
+end
 end
