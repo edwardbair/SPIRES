@@ -37,7 +37,7 @@ end
 for i=1:length(d)
     fname=fullfile(d(i).folder,d(i).name);
     X=single(readgeoraster(fname));
-    
+
     switch product
         case {'collection1','HLS'}
             X(X==-9999)=NaN;
@@ -53,51 +53,55 @@ for i=1:length(d)
             X=X*2.75e-5-0.2; %rescale
     end
     if i==1
-        switch product
-            case 'collection1'
-                info=geotiffinfo(fname);
-                ProjectionStructure=geotiff2mstruct(info);
-                RefMatrix=info.RefMatrix;
-            case {'collection2','HLS'} %build mstruct from CRS info
-                info=georasterinfo(fname);
-                ProjectionStructure=defaultm('tranmerc');
-                ProjectionStructure.falseeasting=...
-                    info.CoordinateReferenceSystem.ProjectionParameters.FalseEasting;
-                ProjectionStructure.falsenorthing=...
-                    info.CoordinateReferenceSystem.ProjectionParameters.FalseNorthing;
-                ProjectionStructure.geoid=...
-                    [info.CoordinateReferenceSystem.GeographicCRS.Spheroid.SemimajorAxis ...
-                    info.CoordinateReferenceSystem.GeographicCRS.Spheroid.Eccentricity];
-                ProjectionStructure.origin=[...
-                    info.CoordinateReferenceSystem.ProjectionParameters.LatitudeOfNaturalOrigin ...
-                    info.CoordinateReferenceSystem.ProjectionParameters.LongitudeOfNaturalOrigin ...
-                    0];
-                ProjectionStructure.scalefactor=...
-                    info.CoordinateReferenceSystem.ProjectionParameters.ScaleFactorAtNaturalOrigin;
-                RefMatrix=RasterRef2RefMat(info.RasterReference);
-        end
-        RasterReference=refmatToMapRasterReference(RefMatrix,size(X));
+        %         switch product
+        %             case 'collection1'
+        %                 info=geotiffinfo(fname);
+        %                 ProjectionStructure=geotiff2mstruct(info);
+        %                 RefMatrix=info.RefMatrix;
+        %             case {'collection2','HLS'} %build mstruct from CRS info
+        info=georasterinfo(fname);
+        RasterReference=info.RasterReference;
+        %                 ProjectionStructure=defaultm('tranmerc');
+        %                 ProjectionStructure.falseeasting=...
+        %                     info.CoordinateReferenceSystem.ProjectionParameters.FalseEasting;
+        %                 ProjectionStructure.falsenorthing=...
+        %                     info.CoordinateReferenceSystem.ProjectionParameters.FalseNorthing;
+        %                 ProjectionStructure.geoid=...
+        %                     [info.CoordinateReferenceSystem.GeographicCRS.Spheroid.SemimajorAxis ...
+        %                     info.CoordinateReferenceSystem.GeographicCRS.Spheroid.Eccentricity];
+        %                 ProjectionStructure.origin=[...
+        %                     info.CoordinateReferenceSystem.ProjectionParameters.LatitudeOfNaturalOrigin ...
+        %                     info.CoordinateReferenceSystem.ProjectionParameters.LongitudeOfNaturalOrigin ...
+        %                     0];
+        %                 ProjectionStructure.scalefactor=...
+        %                     info.CoordinateReferenceSystem.ProjectionParameters.ScaleFactorAtNaturalOrigin;
+        %                 RefMatrix=RasterRef2RefMat(info.RasterReference);
+        %         end
+        %         RasterReference=refmatToMapRasterReference(RefMatrix,size(X));
         if ~isempty(target)
             R.bands=zeros([target.RasterReference.RasterSize length(d)]);
         else
             R.bands=zeros([size(X(:,:,1)) length(d)]);
         end
     end
-    
+
     if ~isempty(target)
-        if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
-                any(size(X)~=target.RasterReference.RasterSize)
+        %         if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
+        if any(size(X)~=target.RasterReference.RasterSize)
+
             % reproject if RefMatrices or raster sizes don't match
-            [X,R.RasterReference]=rasterReprojection(X,RasterReference,...
-                'InProj',ProjectionStructure,'OutProj',target.ProjectionStructure,'rasterref',...
-                target.RasterReference);
-            R.RefMatrix=RasterRef2RefMat(R.RasterReference);
-            R.ProjectionStructure=target.ProjectionStructure;
+            %             [X,R.RasterReference]=rasterReprojection(X,RasterReference,...
+            %                 'InProj',ProjectionStructure,'OutProj',target.ProjectionStructure,'rasterref',...
+            %                 target.RasterReference);
+            %             R.RefMatrix=RasterRef2RefMat(R.RasterReference);
+            %             R.ProjectionStructure=target.ProjectionStructure;
+            X=rasterReprojection(X,RasterReference,...
+                'rasterref',target.RasterReference,'cells',false);
         end
-    else
-        R.RefMatrix=RefMatrix;
-        R.RasterReference=RasterReference;
-        R.ProjectionStructure=ProjectionStructure;
+%     else
+        %         R.RefMatrix=RefMatrix;
+%         R.RasterReference=RasterReference;
+        %         R.ProjectionStructure=ProjectionStructure;
     end
     R.bands(:,:,i)=X;
 end
@@ -114,7 +118,7 @@ switch product
         cm=S.cloudConfidence==2|S.cloudConfidence==3;
         cm=cm|S.cirrus|S.cloud|S.dilatedCloud;
         sm=S.snow;
-        
+
         %buffer snow mask for low fsca around edges of snowfields (~1k buffer)
         SE1=strel('disk',35);
         %SE2=strel('disk',5);
@@ -123,15 +127,15 @@ switch product
         cosm= cm | sm; %& ~S.water;mask water later
         %fill small holes in the cosm mask (~600m holes)
         cosm = ~bwareaopen(~cosm, 20);
-        
+
         if ~isempty(target)
-            if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
-                    any(size(X)~=target.RasterReference.RasterSize)
+            %             if any(RefMatrix(:)~=target.RefMatrix(:)) || ...
+            if any(size(cosm)~=target.RasterReference.RasterSize)
                 % reproject if RefMatrices or raster sizes don't match
                 cosm=rasterReprojection(cosm,RasterReference,...
-                    'InProj',ProjectionStructure,'OutProj',target.ProjectionStructure,'rasterref',...
-                    target.RasterReference,'method','nearest');
+                    'rasterref',target.RasterReference,'method','nearest','cells',false);
             end
         end
 end
+R.RasterReference=RasterReference;
 end

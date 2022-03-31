@@ -1,7 +1,7 @@
 function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
     fsca_thresh,dust_rg_thresh,grain_thresh,dust_thresh,CCfile,...
     WaterMaskfile,CloudMaskfile,fIcefile,...
-    el_cutoff,subset)
+    el_cutoff,subset,varargin)
 
 %run spires  for a landsat scene, also works for Harmonized Senintel
 % Landsat: Sentinel 30 (HLS S30)
@@ -34,7 +34,8 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 % e.g. for MMSA on p42r34, % [3280 3460;3740 3920]
 %note subset is based of DEM, as L8 has different sized scenes for
 %different dates and everything is reprojected to match the dem
-%takes a while if not subsetting, e.g. p42r34 
+%takes a while if not subsetting, e.g. p42r34
+%optional - topographic correction. default false
 
 %output
 % o struct with fields:
@@ -44,29 +45,45 @@ function out=run_spires_landsat(r0dir,rdir,demfile,Ffile,shade,tolval,...
 % shade,0-1
 % all the size of the first two dimension of R or R0
 
-%check name of first file to see if its HLS - usually HLS files are .tif and L8 are .TIF
+%check name of first file to see if its HLS -
+% usually HLS files are .tif and L8 are .TIF
+
+topocorrect=false;
+if nargin==17
+    topocorrect=varargin{1};
+end
+
 d=[dir(fullfile(r0dir,'*.tif')) dir(fullfile(r0dir,'*.TIF'))];
 fn=d(1).name;
 switch fn(1:2)
     case 'HL'
-        mode='HLS';
+        %         mode='HLS';
         %SensorTableBandOrder = [1:8 9:12 8a]
         red_b=4;
         swir_b=11;
     case 'LC'
-        mode='L8';
+        %         mode='L8';
         %SensorTableBandOrder = [1:7]
         red_b=3;
         swir_b=6;
 end
 
 t1=tic;
-solarZ=getOLIsolar(rdir);
+[solarZ,phi0]=getOLIsolar(rdir);
 
+%get projection from rdir and append to DEM (saves having to redo all DEMs
+% w/ coordinate info in CRS)
 dem=load(demfile);
+d=dir(fullfile(rdir));
+dc=struct2cell(d);
+dc=dc(1,:);
+t=cellfun(@isempty,regexp(dc','(tif)|(TIF)'));
+idx=find(~t,1,'first');
+info=georasterinfo(fullfile(d(idx).folder,d(idx).name));
+dem.hdr.RasterReference.ProjectedCRS=info.CoordinateReferenceSystem;
 
 if ~isempty(subset)
-%if crop w/o reprojection
+    %if crop w/o reprojection
     rl=subset(1,1):subset(1,2);
     cl=subset(2,1):subset(2,2);
     [x,y]=pixcenters(dem.hdr.RefMatrix,dem.hdr.RasterReference.RasterSize,...
@@ -76,6 +93,7 @@ if ~isempty(subset)
     dem.hdr.RefMatrix=makerefmat(x(1,1),y(1,1),x(1,2)-x(1,1),y(2,1)-y(1,1));
     dem.hdr.RasterReference=refmatToMapRasterReference(dem.hdr.RefMatrix,...
         size(x));
+    dem.hdr.RasterReference.ProjectedCRS=info.CoordinateReferenceSystem;
     dem.Z=dem.Z(rl,cl);
 end
 
@@ -94,32 +112,33 @@ invalidPxMask = any(isnan(R.bands),3) | any(isnan(R0.bands),3);
 adjust_vars={'cloudmask','fice','cc','watermask'};
 
 for i=1:length(adjust_vars)
-if i==1
-    m=matfile(CloudMaskfile);  
-elseif i==2
-    m=matfile(fIcefile);
-elseif i==3
-    m=matfile(CCfile);
-elseif i==4
-    m=matfile(WaterMaskfile);
-end
+    if i==1
+        m=matfile(CloudMaskfile);
+    elseif i==2
+        m=matfile(fIcefile);
+    elseif i==3
+        m=matfile(CCfile);
+    elseif i==4
+        m=matfile(WaterMaskfile);
+    end
 
-if ~isempty(regexp(adjust_vars{i},'.*mask.*','ONCE'))
-    method='nearest';
-    logicalflag=true;
-else
-    method='linear';
-    logicalflag=false;
-end
-   
-thdr=m.hdr;
-% reproject if RefMatrices or sizes don't match
-    if  any(dem.hdr.RefMatrix(:)~=thdr.RefMatrix(:)) || ...
-                any(dem.hdr.RasterReference.RasterSize~=thdr.RasterReference.RasterSize)
+    if ~isempty(regexp(adjust_vars{i},'.*mask.*','ONCE'))
+        method='nearest';
+        logicalflag=true;
+    else
+        method='linear';
+        logicalflag=false;
+    end
+
+    thdr=m.hdr;
+    %same thing, tack n ProjectedCRS from R
+    thdr.RasterReference.ProjectedCRS = info.CoordinateReferenceSystem;
+    % reproject if sizes don't match
+    if any(dem.hdr.RasterReference.RasterSize~=thdr.RasterReference.RasterSize)
         A.(adjust_vars{i})=rasterReprojection(m.(adjust_vars{i}),...
-        thdr.RasterReference,'InProj',thdr.ProjectionStructure,...
-        'OutProj',dem.hdr.ProjectionStructure,'rasterref',...
-        dem.hdr.RasterReference,'Method',method);
+            thdr.RasterReference,...
+            'rasterref',...
+            dem.hdr.RasterReference,'Method',method);
     else
         A.(adjust_vars{i})=m.(adjust_vars{i});
     end
@@ -135,34 +154,52 @@ end
 
 m=A.cloudmask | A.watermask;
 
+if topocorrect
+
+    [slopeAngle,aspectAngle] = topographicSlope(dem.Z,dem.hdr.RasterReference);
+    mu=sunslope(cosd(solarZ),phi0,slopeAngle,aspectAngle);
+    angToRotate=rotationAngleFromAzimuth(phi0,dem.hdr.RasterReference);
+    SForward = horizonRotatedProj(angToRotate,dem.Z,dem.hdr.RasterReference,true);
+    Htime=SForward.horzAng;
+    %% compute shade mask
+    shadeSlope = mu<=0;
+    shadeHorizon = sind(Htime) > cosd(solarZ);
+
+    R.bands=normalizeReflectance(R.bands,slopeAngle,aspectAngle,solarZ,phi0);
+
+    [R0solarZ,R0phi0]=getOLIsolar(r0dir);
+    R0.bands=normalizeReflectance(R0.bands,slopeAngle,aspectAngle,R0solarZ,R0phi0);
+end
+
 o=run_spires(R0.bands,R.bands,solarZmat,Ffile,m,shade,...
     grain_thresh,dust_thresh,tolval,dem.hdr,red_b,swir_b,[]);
 
 fsca_raw=single(o.fsca);
 t0=fsca_raw==0; %track zeros to prevent 0/0 = NaN
 
-%fshade correction
+%fshade,fice,cc correction
 fshade=o.fshade;
 A.cc(isnan(A.cc))=0;
 A.fice(isnan(A.fice))=0;
 
-ifsca=fsca_raw./(1-fshade-A.fice);
+ifsca=fsca_raw./(1-fshade-A.fice-A.cc);
 ifsca(ifsca>1 | ifsca<0)=1;
 ifsca(t0)=0;
 
 ifsca(ifsca<fsca_thresh)=0;
 
-ifsca(ifsca>0 & A.cc>0)=1;
+% ifsca(ifsca>0 & A.cc>0)=1;
 
 %elevation cutoff
-%el_mask=dem.Z<el_cutoff;
-%ifsca(el_mask)=0;
+el_mask=dem.Z<el_cutoff;
+ifsca(el_mask)=0;
 
 %zero out pixel that are not cloud or snow
 ifsca(~cosm)=0;
 
 % set masked values to nan
-ifsca(A.cloudmask | A.watermask | invalidPxMask)=NaN;
+nanmask=A.cloudmask | A.watermask | invalidPxMask;
+ifsca(nanmask)=NaN;
 
 igrainradius=single(o.grainradius);
 igrainradius(isnan(ifsca) | ifsca==0)=NaN;
@@ -170,12 +207,23 @@ igrainradius(isnan(ifsca) | ifsca==0)=NaN;
 idust=single(o.dust);
 idust(igrainradius<=dust_rg_thresh)=0;
 idust(isnan(igrainradius))=NaN;
-    
+
 out.fsca_raw=fsca_raw;
 out.fsca=ifsca;
 out.fshade=single(fshade);
 out.grainradius=igrainradius;
 out.dust=idust;
+
+if topocorrect %use spatial interpolation in shaded areas
+    t=shadeSlope | shadeHorizon | nanmask;
+    interpvars={'fsca','grainradius','dust'};
+    [x,y]=worldGrid(dem.hdr.RasterReference);
+    for i=1:length(interpvars)
+        F=scatteredInterpolant(x(~t),y(~t),double(out.(interpvars{i})(~t)));
+        out.(interpvars{i})(t & ~nanmask)=F(x(t & ~nanmask),y(t & ~nanmask));
+    end
+end
+
 out.watermask=A.watermask;
 out.cloudmask=A.cloudmask;
 out.nodatamask=isnan(fsca_raw);

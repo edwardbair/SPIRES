@@ -58,15 +58,24 @@ if ~shadebool
     fshade_range=[0 0];
 end
 
-
 x0=[fsca0 fshade0 r0 d0];
 lb=[fsca_range(1) fshade_range(1) r_range(1) d_range(1)];
 ub=[fsca_range(2) fshade_range(2) r_range(2) d_range(2)];
 
 try
     [X,fval] = fmincon(@SnowCloudDiff,x0,A,b,[],[],lb,ub,[],options);
-    out.x=X;
-    out.stats=fval;
+    %try a no background solution
+    Aeq=[1 1 0 0];
+    Beq=1;
+    [X2,fval2] = fmincon(@SnowCloudDiff,x0,A,b,Aeq,Beq,lb,ub,[],options);
+    %if fsca is similar, use no background solution
+    if abs(X(1)-X2(1))<0.02
+        out.x=X2;
+        out.stats=fval2;
+    else % use orig solution
+        out.x=X;
+        out.stats=fval;
+    end
 catch ME
     warning([ME.message,' solver crashed, skipping']);
 end
@@ -78,13 +87,7 @@ end
             %use radius,dust,solarZ, and band # for look up
             modelRefl(i)=F([x(3),x(4),solarZ,i]);
         end
-        
-        modelRefl=x(1).*modelRefl + x(2).*shade + (1-x(1)-x(2)).*R0;
-         diffR = norm(w.*R - w.*modelRefl);
-%MLE
-%          resid=(w.*R - w.*modelRefl);
-%          params=[0,std(resid)];
-%          negL=normlike(params,resid);
-
+            modelRefl=x(1).*modelRefl + x(2).*shade + (1-x(1)-x(2)).*R0;
+             diffR = norm(w.*R - w.*modelRefl);
     end
 end

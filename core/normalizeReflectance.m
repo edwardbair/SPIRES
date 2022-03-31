@@ -12,7 +12,9 @@ function [Rc,c]=normalizeReflectance(R,slope,aspect,solarZ,solarAzimuth,varargin
 % c - correction factor
 
 %b/c of Dozier's strange convention for aspect
-aspect = 180 - aspect;
+if azimuthPreference
+    aspect = 180 - aspect;
+end
 
 model='cosine';
 if nargin==6
