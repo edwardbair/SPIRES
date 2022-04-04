@@ -31,20 +31,48 @@ for i=1:length(d)
         s=strsplit(d(i).folder,filesep);
         s=s(1:end-2);
         xmlfname=fullfile(strjoin(s,filesep),'MTD_TL.xml');
-        S=xml2struct(xmlfname);
+        T=readtable(xmlfname);
+        %xml2struct fields stopped being compatible w/ below starting in
+        %R2021b
+%         S=xml2struct(xmlfname);
         % geolocation
-        gp=S.n1_colon_Level_dash_2A_Tile_ID.n1_colon_Geometric_Info.Tile_Geocoding.Geoposition;
-        for ii=1:length(gp)
-            if strcmp(gp{ii}.Attributes.resolution,res)
-                idx=ii;
-            end
-        end
-        ulx=str2double(gp{idx}.ULX.Text);
-        uly=str2double(gp{idx}.ULY.Text);
-        dx=str2double(gp{idx}.XDIM.Text);
-        dy=str2double(gp{idx}.YDIM.Text);
-        epsg=S.n1_colon_Level_dash_2A_Tile_ID.n1_colon_Geometric_Info.Tile_Geocoding.HORIZONTAL_CS_CODE.Text;
-        epsg=strsplit(epsg,':');
+%         gp=S.n1:Level_dash_2A_Tile_ID.n1_colon_Geometric_Info.Tile_Geocoding.Geoposition;
+%         for ii=1:length(gp)
+%             if strcmp(gp{ii}.Attributes.resolution,res)
+%                 idx=ii;
+%             end
+%         end
+%         ulx=str2double(gp{idx}.ULX.Text);
+%         uly=str2double(gp{idx}.ULY.Text);
+%         dx=str2double(gp{idx}.XDIM.Text);
+%         dy=str2double(gp{idx}.YDIM.Text);
+        idx=T.resolutionAttribute==str2double(res);
+        ulx=T.ULX(idx);
+        uly=T.ULY(idx);
+        dx=T.XDIM(idx);
+        dy=T.YDIM(idx);
+
+%         epsg=S.n1_colon_Level_dash_2A_Tile_ID.n1_colon_Geometric_Info.Tile_Geocoding.HORIZONTAL_CS_CODE.Text;
+%         epsgfid = fopen('temp.txt','rt');
+fid=fopen(xmlfname);
+CC = textscan(fid,'%s');
+CC=CC{1};
+cc=regexp(CC,'(?<=\<HORIZONTAL_CS_CODE>EPSG:).[0-9]+','match');
+tt=cellfun(@isempty,cc);
+epsg=str2double(cc{~tt});
+cc=regexp(CC,'<Mean_Sun_Angle>','match');
+tt=cellfun(@isempty,cc);
+idtt=find(~tt);
+R.solarzenith=str2double(regexp(CC{idtt+2},...
+    '(?<=unit="deg">).*(?=<\/ZENITH_ANGLE)','match'));
+R.solarzenith=str2double(regexp(CC{idtt+4},...
+    '(?<=unit="deg">).*(?=<\/AZIMUTH_ANGLE)','match'));
+%solar data
+%         SA=S.n1_colon_Level_dash_2A_Tile_ID.n1_colon_Geometric_Info.Tile_Angles.Mean_Sun_Angle;
+%         R.solarzenith=str2double(SA.ZENITH_ANGLE.Text);
+%         R.solarazimuth=str2double(SA.AZIMUTH_ANGLE.Text);
+fclose(fid);
+
         sz=size(X);
             xlims=[ulx ulx+sz(2)*dx];
             ylims=[uly+sz(1)*dy uly];
@@ -59,12 +87,9 @@ for i=1:length(d)
             RR=maprefcells(xlims,ylims,size(x),...
             'ColumnsStartFrom','north');
         end
-        RR.ProjectedCRS=projcrs(str2double(epsg{2}));
+        RR.ProjectedCRS=projcrs(epsg);
         R.RR=RR;
-        %solar data
-        SA=S.n1_colon_Level_dash_2A_Tile_ID.n1_colon_Geometric_Info.Tile_Angles.Mean_Sun_Angle;
-        R.solarzenith=str2double(SA.ZENITH_ANGLE.Text);
-        R.solarazimuth=str2double(SA.AZIMUTH_ANGLE.Text);
+        
     end
     if cropflag
         X=X(c(1,1):c(1,2),c(2,1):c(2,2));
