@@ -182,13 +182,21 @@ fshade=o.fshade;
 A.cc(isnan(A.cc))=0;
 A.fice(isnan(A.fice))=0;
 
-ifsca=fsca_raw./(1-fshade-A.fice-A.cc);
+ifsca=fsca_raw;
+ifsca(ifsca<fsca_thresh)=0;
+
+ifsca=ifsca./(1-fshade-A.fice-A.cc);
 ifsca(ifsca>1 | ifsca<0)=1;
 ifsca(t0)=0;
 
-ifsca(ifsca<fsca_thresh)=0;
+%spatially interpolate dense canopy
+t=A.cc >= 0.50;
+[x,y]=worldGrid(dem.hdr.RasterReference);
+fsca_mask=ifsca>0;
+F=scatteredInterpolant(x(~t),y(~t),double(fsca_mask(~t)),'nearest');
+ifsca(t)=F(x(t),y(t));
 
-% ifsca(ifsca>0 & A.cc>0)=1;
+% ifsca(ifsca>0 & A.cc>=0.25)=1; %addresses low snow bias in dense trees
 
 %elevation cutoff
 el_mask=dem.Z<el_cutoff;
