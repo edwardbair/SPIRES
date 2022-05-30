@@ -1,20 +1,9 @@
-function make_3panel_spires_video(infiles,target,pshape)
+function make_4panel_spires_video(infiles,vidname,rrb)
 %create reprojected spires MODIS video
-%infiles - cell, N*1 list of h5 files to read
-%output struct from smooth_and_run_modis
-%w fields:
-%fsca (canopy adj),
-%grain radius (um)
-%dust (ppmw)
-%matdates (datenums)
-%and hdr struct w it's own fields RefMatrix and ProjectionStructure
-% target - hdr struct w. Projection Structure RasterReference to
-%reproject to
-
-%pshape - polyshape of boundary area
-%topofile - h5 topofile location
-fname='spires_video.avi';
-f=VideoWriter(fname);
+%input: infile - input h5 files, cell Nx1
+%vidname : output vidname
+%rrb : target rasterref w/ CRS
+f=VideoWriter(vidname);
 
 f.FrameRate=10;
 f.Quality=90;
@@ -30,30 +19,14 @@ for i=1:length(info.Groups.Groups.Datasets)
     end
 end
 
-f1=figure('Position',[100   1   700   900],'Color','w');
+f1=figure('Position',[100   1   1000   1000],'Color','w');
 set(f1,'toolbar','none');
 ha=tight_subplot(2, 2, [0.025 0.001], [0.025 0.01], [0.025 0]);
 set(ha,'NextPlot','replaceChildren');
 
-[lon,lat]=pshape.boundary;
-
-t=~isnan(lat) & ~isnan(lon);
-[x,y]=mfwdtran(target.ProjectionStructure,lat,lon);
-[row,col]=map2pix(target.RasterReference,x,y);
-
-mask=poly2mask(col(t),row(t),target.RasterReference.RasterSize(1),...
-    target.RasterReference.RasterSize(2));
-
-[lon,lat]=pshape.boundingbox;
-[x,y]=mfwdtran(target.ProjectionStructure,lat,lon);
-[bbox_y,bbox_x]=map2pix(target.RasterReference,x,y);
-
 cm=colormap(parula);
 
 cm(1,:)=[0.5 0.5 0.5];
-
-[x,y]=pixcenters(target.RefMatrix,target.RasterReference.RasterSize,'makegrid');
-[lat,lon]=minvtran(target.ProjectionStructure,x,y);
 
 for j=1:length(vars)
     axes(ha(j));
@@ -63,16 +36,21 @@ for j=1:length(vars)
     
     colormap(cm);
     
-    lat_l=ceil(lat(1,1)):-1:floor(lat(end,1));
-    lon_l=ceil(lon(1,1)):1:floor(lon(1,end));
+    [x,y]=worldGrid(rrb);
+    [lat,lon]=projinv(rrb.ProjectedCRS,x,y);
+    lat_l=ceil(lat(1,1)):-4:floor(lat(end,1));
+    lon_l=ceil(lon(1,1)):4:floor(lon(1,end));
     
-    [x,y]=mfwdtran(target.ProjectionStructure ,mean(lat_l)*ones(size(lon_l)),lon_l);
-    [~,clon]=map2pix(target.RefMatrix,x,y);
-    
-    [x,y]=mfwdtran(target.ProjectionStructure,lat_l,mean(lon_l)*ones(size(lat_l)));
-    [rlat,~]=map2pix(target.RefMatrix,x,y);
-    
-   
+    [x,y]=projfwd(rrb.ProjectedCRS,mean(lat_l)*ones(size(lon_l)),lon_l);
+    [clon,~]=worldToIntrinsic(rrb,x,y);
+        
+    [x,y]=projfwd(rrb.ProjectedCRS,lat_l,mean(lon_l)*ones(size(lat_l)));
+    [~,rlat]=worldToIntrinsic(rrb,x,y);
+    imagesc;    
+    colormap(cm);
+%     set(gca,'YDir','reverse','Box','on','XTicklabel',[],'YTickLabel',[]);
+%     set(gca,'YTick',rlat,'YTickLabel',num2str(lat_l'));
+%     set(gca,'XTick',clon,'XTickLabel',num2str(lon_l'))
     
     set(ax,'YDir','reverse','Box','on','XTick',clon,'XTicklabel',[],...
             'YTick',rlat,'YTickLabel',[]);
@@ -99,7 +77,7 @@ for j=1:length(vars)
             c3.Label.String='deltavis';
             caxis([0 0.4]);
         else
-            c3.Label.String='dust conc, ppmw';
+            c3.Label.String='dust conc, ppm';
             caxis([0 300]);
         end
      elseif j==4
@@ -124,7 +102,7 @@ for ii=1:size(infiles,1)
     
     for i=1:length(in.matdates)
         x=struct();
-        [ declin, ~, solar_lon ]=Ephemeris(in.matdates(i)+10.5/24+8/24);
+        [ declin, ~, solar_lon ]=EarthEphemeris(in.matdates(i)+10.5/24+8/24);
         mu0=sunang(lat,lon,declin,solar_lon);
 
         for j=1:length(vars)
@@ -133,22 +111,30 @@ for ii=1:size(infiles,1)
             x.albedo=NaN(size(x.grain_size));    
                 if dvisflag
                     x.albedo(t)=AlbedoLookup(double(x.grain_size(t)),...
-                        double(mu0(t)),[],3,'dust',0);
+                        double(mu0(t)),3,'dust',0);
                     x.albedo(t)=x.albedo(t)-0.63.*x.deltavis(t);
                 else
                     x.albedo(t)=AlbedoLookup(double(x.grain_size(t)),...
                         double(mu0(t)),...
-                        [],3,'dust',double(x.dust(t)).*1e-6);
+                        3,'dust',double(x.dust(t)).*1e-6);
                 end
             else
-            x.(vars{j})=rasterReprojection(in.(vars{j})(:,:,i),in.hdr.RefMatrix,...
-                in.hdr.ProjectionStructure,target.ProjectionStructure,...
-                'rasterref',target.RasterReference);
+            x.(vars{j})=rasterReprojection(in.(vars{j})(:,:,i),...
+                in.hdr.RasterReference,'InProj',in.hdr.ProjectionStructure,...
+                'rasterref',rrb);
+            x.(vars{j})(x.(vars{j})<0)=0;
+            
             end
-            x.(vars{j})(isnan(x.(vars{j})))=0;
-            x.(vars{j})(~mask)=NaN;
+%            
+%             x.(vars{j})(~mask)=NaN;
             axes(ha(j));
-            imagesc(x.(vars{j}),'AlphaData',double(mask));
+            if j==1
+                mask=~isnan(x.(vars{1}));
+            else
+                mask=~isnan(x.(vars{1}));
+                x.(vars{j})(isnan(x.(vars{j})))=0;
+            end
+            imagesc(x.(vars{j}),'AlphaData',mask);
             text(1,1,ltr{j},'FontSize',14,'VerticalAlignment','top',...
             'HorizontalAlignment','right','Units','normalized');
             if j==1

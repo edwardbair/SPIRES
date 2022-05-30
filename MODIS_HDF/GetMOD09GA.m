@@ -66,6 +66,7 @@ if angle
     X(X<-180) = NaN;
 elseif refl
     X = single(iX)/reflScaleDivisor;
+%     X(X<0) = 0;
     X(X<0) = NaN;
 elseif strncmpi(whichVariable,'state',5)
     X = unpackMOD09state(iX);

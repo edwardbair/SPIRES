@@ -11,7 +11,6 @@ f.FrameRate=10;
 f.Quality=90;
 open(f);
 
-% f1=figure('Position',[100   1   1100 1100],'Color','w');
 f1=figure('Position',[100   1   1900  800],'Color','w');
     set(f1,'toolbar','none');
     set(gca,'NextPlot','replaceChildren');

@@ -82,7 +82,7 @@ else
     
     %create 2 smoothed versions: fsca (fully adjusted for cc,ice,shade,
     % elevation cutoff,watermask, fsca_min)
-    %and fsca_raw (no cc,ice adj, or shade adj), but elevation cutoff, watermask, &
+    %and fsca_raw (no cc,ice adj but shade adj, elevation cutoff, watermask, &
     %fsca_min applied)
     out.fsca(~tmask)=0;
     out.fsca_raw(~tmask)=0;
@@ -121,30 +121,21 @@ else
     fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
         datestr(matdates(end)));
     
-    %smooth fully adj fsca
     out.fsca=smoothDataCube(out.fsca,newweights,'mask',~mask,...
         'method','smoothingspline','SmoothingParam',0.1);
-    
-    %smooth fsca_raw
+
     out.fsca_raw=smoothDataCube(out.fsca_raw,newweights,'mask',~mask,...
         'method','smoothingspline','SmoothingParam',0.1);
 
-    %smooth fshade
     out.fshade=smoothDataCube(out.fshade,newweights,'mask',~mask,...
         'method','smoothingspline','SmoothingParam',0.1);
-
     %get some small fsca values from smoothing - set to zero
     out.fsca(out.fsca<fsca_thresh)=0;
     out.fsca(bigmask)=NaN;
-    
-    %same for fsca_raw
+
     out.fsca_raw(out.fsca_raw<fsca_thresh)=0;
     out.fsca_raw(bigmask)=NaN;
     
-    %same for fshade
-    out.fshade(out.fsca_raw<fsca_thresh)=0;
-    out.fshade(bigmask)=NaN;
-
     %fix values below thresh to ice values
     t=out.fsca<fice;
     out.fsca(t)=fice(t);
@@ -282,10 +273,10 @@ else
         datestr(matdates(end)));
     
     %output variables
-    outvars={'fsca_raw','fsca','fshade','grainradius','dust'};
-    outnames={'raw_snow_fraction','snow_fraction','shade_fraction','grain_size','dust'};
-    outdtype={'uint8','uint8','uint8','uint16','uint16'};
-    outdivisors=[100 100 100 1 10];
+    outvars={'fsca_raw','fsca','grainradius','dust'};
+    outnames={'raw_snow_fraction','snow_fraction','grain_size','dust'};
+    outdtype={'uint8','uint8','uint16','uint16'};
+    outdivisors=[100 100 1 10];
     
     for i=1:length(outvars)
         member=outnames{i};

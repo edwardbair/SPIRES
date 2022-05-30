@@ -138,7 +138,8 @@ parfor i=1:length(matdates)
             %scale to integers for CNN
             scaleFactor=10000;
             I=int16(I.*scaleFactor);
-            C = semanticseg(I,net);
+            %GPU runs out of memory
+            C = semanticseg(I,net,'ExecutionEnvironment','cpu');
             cm = C == 'cloud' ;
             
             %gets brightest part, but not full dry lake area

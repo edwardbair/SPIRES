@@ -10,7 +10,7 @@ function R0=createR0(loc,tile,matdates,sensor)
 switch sensor
     case 'MODIS'
         R0=nan([2400 2400 7 length(matdates)]);
-        for i=1:length(matdates)
+        parfor i=1:length(matdates)
             yr=year(matdates(i));
             doy=matdates(i)-datenum([yr 1 1])+1;
             searchName=sprintf("*%i%03i.%s*.hdf",yr,doy,tile);
@@ -28,13 +28,16 @@ switch sensor
         end
         [~,idx]=min(squeeze(R0(:,:,3,:)),[],3);
         X=nan([size(idx) size(R0,3)]);
-       sprintf('')
         for i=1:size(idx,1)
             for j=1:size(idx,2)
             X(i,j,:)=squeeze(R0(i,j,:,idx(i,j)));
             end
         end
   R0=X;
+  %interpolate NaNs
+  for j=1:size(R0,3)
+    R0(:,:,j)=inpaint_nans(double(squeeze(R0(:,:,j))),3);
+  end
     otherwise
         error("only MODIS implemented")
 end

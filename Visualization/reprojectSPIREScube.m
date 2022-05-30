@@ -9,15 +9,6 @@ function [X,mdates,rrb]=reprojectSPIREScube(fname,endmember,x11,y11,x22,...
 
 [x,mdates,hdr]=GetEndmember(fname,endmember);
 
-% %target proj, US Albers
-% target_p=projcrs(102003,'authority','esri');
-%bounding box
-% x11=-2442000;
-% x22=130000;
-% y11=1774000;
-% y22=-558000;
-%reproject cube
-
 minX=min(x(x(:)>0));
 
 [X,rrb]=rasterReprojection(x,hdr.RasterReference,...
@@ -27,9 +18,3 @@ minX=min(x(x(:)>0));
 X(X<minX)=0;
 
 end
-
-%plot
-% i=100; % day of water year 100
-% st=datestr(mdates(i)); %corresponding date
-% imagesc(x2(:,:,i));axis image;colorbar; %plot
-% title(st);
