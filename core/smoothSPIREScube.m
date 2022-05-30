@@ -80,7 +80,7 @@ else
     tmask=out.fsca>fsca_thresh & out.grainradius > mingrainradius;
     tmask=movingPersist(tmask,windowSize,windowThresh);
     
-    %create 2 smoothed versions: fsca (fully adjusted for cc,ice,shade,
+    %create 2 smoothed versions: fsca (adjusted for cc,ice,shade,
     % elevation cutoff,watermask, fsca_min)
     %and fsca_raw (no cc,ice adj, or shade adj), but elevation cutoff, watermask, &
     %fsca_min applied)
@@ -118,7 +118,7 @@ else
     
     %fill in and smooth NaNs
     
-    fprintf('smoothing fsca %s...%s\n',datestr(matdates(1)),...
+    fprintf('smoothing fsca,fsca_raw,fshade %s...%s\n',datestr(matdates(1)),...
         datestr(matdates(end)));
     
     %smooth fully adj fsca
@@ -150,7 +150,7 @@ else
     out.fsca(t)=fice(t);
     out.fsca(out.fsca<fsca_thresh)=0;
     
-    fprintf('finished smoothing fsca %s...%s\n',datestr(matdates(1)),...
+    fprintf('finished smoothing fsca,fsca_raw,fshade %s...%s\n',datestr(matdates(1)),...
         datestr(matdates(end)));
     
     fprintf('smoothing grain radius %s...%s\n',datestr(matdates(1)),...
