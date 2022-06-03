@@ -15,6 +15,10 @@ for i=1:size(X,3)
     nend=min(size(X,3),i+N);
     st=sum(X(:,:,nstart:nend),3);
     tt=false(size(st));
-    tt(st >= thresh)=true;
+    %scale  threshold such that it is 1 * thresh for full window
+    %and 0.5 * thresh at start or end positions
+    tval=(nend-nstart)/(2*N)*thresh;
+
+    tt(st >= tval)=true;
     Xout(:,:,i)=tt;
 end

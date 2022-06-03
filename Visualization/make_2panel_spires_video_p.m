@@ -36,10 +36,10 @@ spmd
         if j==1
             set(gca,'YTick',rlat,'YTickLabel',num2str(lat_l'));
         end
-        if j==2
-            set(gca,'XTick',clon,'XTickLabel',num2str(lon_l'))
-        end
-        c=colorbar('Location','south');
+        
+        set(gca,'XTick',clon,'XTickLabel',num2str(lon_l'))
+        
+        c=colorbar('Location','SouthOutside');
 %         c.Position(1)=c.Position(1)+0.25;
 %         c.Position(2)=c.Position(2)+0.05;
 %         c.Position(3)=c.Position(3)-0.16;
