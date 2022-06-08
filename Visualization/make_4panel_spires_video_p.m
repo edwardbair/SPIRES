@@ -1,8 +1,15 @@
-function make_4panel_spires_video_p(infiles,vidname,rrb)
+function make_4panel_spires_video_p(infiles,vidname,rrb,varargin)
 %parallel implementation of function to create reprojected spires MODIS video
 %input: infile - input h5 files, cell Nx1
 %vidname : output vidname
 %rrb : target rasterref w/ CRS
+%optional: mask matching rrb, logical
+
+mask0=[];
+if nargin==4
+    mask0=varargin{1};
+end
+    
 
 dvisflag=false;
 vars={'snow_fraction','grain_size','dust','albedo'};
@@ -17,8 +24,14 @@ end
 
 [x,y]=worldGrid(rrb);
 [lat,lon]=projinv(rrb.ProjectedCRS,x,y);
-lat_l=ceil(lat(1,1)):-4:floor(lat(end,1));
-lon_l=ceil(lon(1,1)):4:floor(lon(1,end));
+dy=-2;
+dx=2;
+y1=ceil(lat(1,1));
+y2=floor(lat(end,1));
+x1=ceil(lon(1,1));
+x2=floor(lon(1,end));
+lat_l=y1:dy:y2;
+lon_l=x1:dx:x2;
 
 [x,y]=projfwd(rrb.ProjectedCRS,mean(lat_l)*ones(size(lon_l)),lon_l);
 [clon,~]=worldToIntrinsic(rrb,x,y);
@@ -28,7 +41,7 @@ lon_l=ceil(lon(1,1)):4:floor(lon(1,end));
 cm=colormap(parula);
 close;
 cm(1,:)=[0.5 0.5 0.5];
-ltr={'(a)','(b)','(c)','(d)'};
+%ltr={'(a)','(b)','(c)','(d)'};
 
 spmd
     figure('Position',[1   1   1900 1200],'Color','w','Visible','off');
@@ -54,24 +67,24 @@ spmd
         c.Position(3)=c.Position(3)-0.16;
         if j==1
             %colorbar('Location','south');
-            title('fsca');
+            c.Label.String='fsca';
             caxis([0 1]);
         elseif j==2
             %colorbar('Location','south');
-            title('grain radius, \mum');
+            c.Label.String='grain radius, \mum';
             caxis([40 900])
         elseif j==3
             %colorbar('Location','south');
             if dvisflag
-                title('deltavis');
+                c.Label.String='deltavis';
                 caxis([0 0.4]);
             else
-                title('dust conc, ppm');
+                c.Label.String='dust conc, ppm';
                 caxis([0 300]);
             end
         elseif j==4
             %colorbar('Location','south');
-            title('albedo');
+            c.Label.String='albedo';
             caxis([0.4 0.9]);
         end
     end
@@ -124,7 +137,11 @@ for ii=1:size(infiles,1)
                     hdr.RasterReference,'InProj',hdr.ProjectionStructure,...
                     'rasterref',rrb);
                 fscaf(fscaf<0)=0;
-                mask=~isnan(fscaf);
+                if ~isempty(mask0)
+                    mask=mask0;
+                else
+                    mask=~isnan(fscaf);
+                end
                 x=fscaf;
             elseif j==2
                 grain_sizef=rasterReprojection(grain_size_i,...
@@ -154,15 +171,18 @@ for ii=1:size(infiles,1)
                 mu0=sunang(lat,lon,declin,solar_lon);
 
                 t=~isnan(grain_sizef) & grain_sizef>0;
+                
                 albedo=NaN(size(grain_sizef));
-                if dvisflag
-                    albedo(t)=AlbedoLookup(double(grain_sizef(t)),...
-                        double(mu0(t)),3,'dust',0);
-                    albedo(t)=albedo(t)-0.63.*deltavisf(t);
-                else
-                    albedo(t)=AlbedoLookup(double(grain_sizef(t)),...
-                        double(mu0(t)),...
-                        3,'dust',double(dustf(t)).*1e-6);
+                if any(t,'all')
+                    if dvisflag
+                        albedo(t)=AlbedoLookup(double(grain_sizef(t)),...
+                            double(mu0(t)),3,'dust',0);
+                        albedo(t)=albedo(t)-0.63.*deltavisf(t);
+                    else
+                        albedo(t)=AlbedoLookup(double(grain_sizef(t)),...
+                            double(mu0(t)),...
+                            3,'dust',double(dustf(t)).*1e-6);
+                    end
                 end
                 x=albedo;
 
@@ -170,11 +190,11 @@ for ii=1:size(infiles,1)
             nexttile(j)
             imagesc(x,'AlphaData',mask);
 
-            text(1,0.5,ltr{j},'FontSize',25,'VerticalAlignment','bottom',...
-                'HorizontalAlignment','right','Units','normalized');
+%             text(1,0.5,ltr{j},'FontSize',25,'VerticalAlignment','bottom',...
+%                 'HorizontalAlignment','right','Units','normalized');
             if j==1
-                text(0,1,datestr(matdates_i),'units','normalized',...
-                    'FontSize',25,'VerticalAlignment','top');
+                text(0,0.25,datestr(matdates_i),'units','normalized',...
+                    'FontSize',25);
             end
 
         end

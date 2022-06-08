@@ -42,7 +42,7 @@ spmd
         c=colorbar('Location','SouthOutside');
 %         c.Position(1)=c.Position(1)+0.25;
 %         c.Position(2)=c.Position(2)+0.05;
-%         c.Position(3)=c.Position(3)-0.16;
+         c.Position(3)=c.Position(3)-0.05;
         if j==1
             title('fsca_raw','Interpreter','none');
             caxis([0 1]);

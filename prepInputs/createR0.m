@@ -79,7 +79,7 @@ switch sensor
         %compute b3 min and min ind
         b3=squeeze(R0(:,:,3,:));
 
-        b3(b3<0.1)=nan; %too dark
+        b3(b3<0.10)=nan; %too dark
 
         %compute min and min index for b3
         [min_b3,idx_min_b3]=min(b3,[],3);
