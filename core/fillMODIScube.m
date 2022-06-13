@@ -61,25 +61,22 @@ BigRR=refmatToMapRasterReference(BigR,sz(1:2));
 
 %allocate 3 & 4D cubes with measurements for all days
 sz0=[hdr.RasterReference.RasterSize nbands length(matdates)];
-% refl=zeros(sz0);
+
 filledCube=zeros(sz0,'single');
 SolarZenith=zeros([sz0(1) sz0(2) sz0(4)],'single');
 SensorZenith=zeros([sz0(1) sz0(2) sz0(4)],'single');
-% cloudmask=false([sz0(1) sz0(2) sz0(4)]);
+
 pxweights=zeros([sz0(1) sz0(2) sz0(4)],'single');
-% bweights=zeros([sz0(1) sz0(2) sz0(4)]);
+
 
 parfor i=1:length(matdates)
     isodate=datenum2iso(matdates(i),7);
     %allocate daily cubes
-%     refl_=NaN(sz);
+
     filledCube_=NaN(sz,'single');
     SolarZenith_=NaN([sz(1) sz(2)],'single');
     SensorZenith_=NaN([sz(1) sz(2)],'single');
-%     SolarAzimuth_=NaN([sz(1) sz(2)]);
-%     cloudmask_=false([sz(1) sz(2)]);
     pxweights_=zeros([sz(1) sz(2)],'single');
-%     bweights_=zeros([sz(1) sz(2)]);
     %load up each tile
     for k=1:length(tiles)
         tile=tiles{k};
@@ -97,25 +94,24 @@ parfor i=1:length(matdates)
             r=round(r);
             c=round(c);
             f=fullfile(hdfbasedir,tile,d{m});
-            [~,pxWeights,~] = weightMOD09(f);
-%             bWeights=bWeights{1};
-%             bWeights=sum(bWeights,3);
-%             bweights_(r,c)= bWeights;
+            %some of the hdf files are corrupt and need to be skipped
+            try
+                [~,pxWeights,~] = weightMOD09(f);
+            catch
+                fprintf('could not open %s, skipping\n',f)
+                continue
+            end
+            
             pxweights_(r,c)= pxWeights;
 
             x=single(GetMOD09GA(f,'SolarZenith'));
+            
             if any(isnan(x(:)))
                 x = inpaint_nans(double(x),4);
             end
             x=imresize(x,tsiz(k,:));
             SolarZenith_(r,c)=imresize(x,tsiz(k,:));
 
-%             x=single(GetMOD09GA(f,'SolarAzimuth'));
-%             if any(isnan(x(:)))
-%                 x = inpaint_nans(double(x),4);
-%             end
-%             x=imresize(x,tsiz(k,:));
-%             SolarAzimuth_(r,c)=imresize(x,tsiz(k,:));
 
             % sensor zenith, and pixel sizes
             x = single(GetMOD09GA(f,'sensorzenith'));
@@ -144,7 +140,7 @@ parfor i=1:length(matdates)
             
             %gets brightest part, but not full dry lake area
             saltpan=imresize(S.saltpan,tsiz(k,:));                
-            %MOD35snow=imresize(S.MOD35snow,tsiz(k,:));
+            
             
             cloudOrsnowMask = cm | C=='snow' | MOD35cm & ~saltpan;
 
@@ -165,8 +161,6 @@ parfor i=1:length(matdates)
             sr(:,:,swir_b)=sr_swir_b;
 
             filledCube_(r,c,:)=sr;
-%             refl_(r,c,:)=sr;
-%             cloudmask_(r,c)=cm;
 
             fprintf('loaded, corrected, and created masks for tile:%s date:%i \n',...
                 tile,isodate);
@@ -175,15 +169,9 @@ parfor i=1:length(matdates)
         end
     end
 
-%     refl_=rasterReprojection(refl_,BigRR,'InProj',mstruct,...
-%         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
-%         'fillvalue',nan);
     filledCube_=rasterReprojection(filledCube_,BigRR,'InProj',mstruct,...
         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
         'fillvalue',nan);
-%     cloudmask_=rasterReprojection(cloudmask_,BigRR,'InProj',mstruct,...
-%         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
-%         'Method','nearest','fillvalue',0);
     SolarZenith_=rasterReprojection(SolarZenith_,BigRR,'InProj',mstruct,...
         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
         'fillvalue',nan);
@@ -193,18 +181,13 @@ parfor i=1:length(matdates)
     pxweights_=rasterReprojection(pxweights_,BigRR,'InProj',mstruct,...
         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
         'fillvalue',nan);
-%     bweights_=rasterReprojection(bweights_,BigRR,'InProj',mstruct,...
-%         'OutProj',hdr.ProjectionStructure,'rasterref',hdr.RasterReference,...
-%         'fillvalue',nan);
 
-%     refl(:,:,:,i)=refl_;
-    filledCube(:,:,:,i)=filledCube_
+    filledCube(:,:,:,i)=filledCube_;
     SolarZenith(:,:,i)=SolarZenith_;
     SensorZenith(:,:,i)=SensorZenith_;
-%     cloudmask(:,:,i)=cloudmask_;
+
     pxweights(:,:,i)=pxweights_;
-%     bweights(:,:,i)=bweights_;
+
 end
 
-% filledCube=refl;
 end

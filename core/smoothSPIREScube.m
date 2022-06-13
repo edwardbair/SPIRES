@@ -35,10 +35,16 @@ function out=smoothSPIREScube(nameprefix,outloc,matdates,...
 time1=tic;
 
 h5name=fullfile(outloc,[nameprefix datestr(matdates(end),'yyyy') '.h5']);
+lockname=fullfile(outloc,[nameprefix datestr(matdates(end),'yyyy') '.h5lock']);
 
-if exist(h5name,'file')
+if exist(h5name,'file')==2 
     fprintf('%s exists, skipping\n',h5name);
+elseif exist(lockname,'file')==2
+    fprintf('%s locked, skipping\n',lockname);
 else
+    fid=fopen(lockname,'w');
+    fclose(fid);
+    
     fprintf('reading %s...%s\n',datestr(matdates(1)),datestr(matdates(end)));
     %int vars
     vars={'fsca','fshade','grainradius','dust','weights','sensorZ'};
@@ -287,6 +293,8 @@ else
     outdtype={'uint8','uint8','uint8','uint16','uint16'};
     outdivisors=[100 100 100 1 10];
     
+    %create h5 cube in tmp then move to avoid network h5 write issues
+    h5tmpname=fullfile(tempdir,[nameprefix datestr(matdates(end),'yyyy') '.h5']);
     for i=1:length(outvars)
         member=outnames{i};
         Value=out.(outvars{i});
@@ -294,9 +302,10 @@ else
         dS.(member).dataType=outdtype{i};
         dS.(member).maxVal=max(Value(:));
         dS.(member).FillValue=intmax(dS.(member).dataType);
-        writeh5stcubes(h5name,dS,out.hdr,out.matdates,member,Value);
+        writeh5stcubes(h5tmpname,dS,out.hdr,out.matdates,member,Value);
     end
-    
+    system(['mv ' h5tmpname ' ' h5name]);
+    delete(lockname);
     time2=toc(time1);
     fprintf('completed in %5.2f hr\n',time2/60/60);
 end
