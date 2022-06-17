@@ -56,12 +56,13 @@ for i=1:length(m)
     rundates=matdates(idx);
     fname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.mat']);
     lockname=fullfile(outloc,[nameprefix datestr(rundates(1),'yyyymm') '.matlock']);
-
-
+    %delete lockname on cleanup
+    cleanup=onCleanup(@()CleanupFun(lockname));
+    
     if exist(fname,'file')==0 && exist(lockname,'file')==0 %don't overwrite existing files
         fid=fopen(lockname,'w');
         fclose(fid);
-
+        
         [R,solarZ,sensorZ,weights]=...
             fillMODIScube(tiles,rundates,hdfbasedir,net,hdr,red_b,swir_b);
         out=run_spires(R0,R,solarZ,Ffile,mask,shade,...
@@ -94,3 +95,11 @@ for i=1:length(m)
 end
 t2=toc(t1);
 fprintf('completed in %5.2f hr\n',t2/60/60);
+end
+
+function CleanupFun(lockname)
+if exist(lockname,'file')==2
+    fprintf('cleaning up %s\n',lockname)
+    delete(lockname)
+end
+end
