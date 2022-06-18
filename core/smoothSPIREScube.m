@@ -36,8 +36,7 @@ time1=tic;
 
 h5name=fullfile(outloc,[nameprefix datestr(matdates(end),'yyyy') '.h5']);
 lockname=fullfile(outloc,[nameprefix datestr(matdates(end),'yyyy') '.h5lock']);
-%delete lockname on cleanup
-cleanup=onCleanup(@()CleanupFun(lockname));
+
 if exist(h5name,'file')==2 
     fprintf('%s exists, skipping\n',h5name);
 elseif exist(lockname,'file')==2
@@ -45,7 +44,8 @@ elseif exist(lockname,'file')==2
 else
     fid=fopen(lockname,'w');
     fclose(fid);
-    
+    %delete lockname on cleanup
+    cleanup=onCleanup(@()CleanupFun(lockname));
 
     fprintf('reading %s...%s\n',datestr(matdates(1)),datestr(matdates(end)));
     %int vars
