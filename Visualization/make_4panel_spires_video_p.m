@@ -138,7 +138,7 @@ for ii=1:size(infiles,1)
                     'rasterref',rrb);
                 fscaf(fscaf<0)=0;
                 if ~isempty(mask0)
-                    mask=mask0;
+                    mask=mask0 & ~isnan(fscaf);
                 else
                     mask=~isnan(fscaf);
                 end

@@ -53,7 +53,9 @@ elseif isscalar(azm)
 else
     assert(isequal(size(azm),siz(1:2)),...
         'if azimuth is not a scalar, it must be size of horizon grid')
-    u = unique(azm(:));
+    azm = round(azm); % just need to the nearest degree
+    u = unique(azm(~isnan(azm)));
+    %u = unique(azm(:));
     for k=1:length(u)
         adiff = abs(angles-u(k));
         idx = find(adiff==min(adiff));
