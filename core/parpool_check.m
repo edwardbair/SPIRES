@@ -28,10 +28,12 @@ else
 end
 %open new pool
     function pool = openpool(poolsize)
-        try
-           pool = parpool(poolsize);
-        catch
-            warning('not able to open parallel pool')
-        end
+        % try
+          c=parcluster;
+          c.NumWorkers=poolsize;
+          pool = parpool(c,poolsize);
+%         catch
+%             warning('not able to open parallel pool')
+%         end
     end
 end

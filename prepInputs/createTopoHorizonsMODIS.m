@@ -11,7 +11,8 @@ ReferencingMatrix=R.RefMatrix_500m;
 RR=RR.RasterReference_500m;
 out.elevation=rasterReprojection(Z,ZR,'rasterref',RR);
 out.elevation=single(out.elevation);
-[A,H] = horizonAllDirections(out.elevation,RR);
+
+[A,H] = horizonAllDirections(out.elevation,RR,'nHorz',360);
 out.viewfactor = viewFactor(A,H,out.elevation,RR);
 out.viewfactor = round(out.viewfactor*100);
 out.viewfactor = out.viewfactor / 100;

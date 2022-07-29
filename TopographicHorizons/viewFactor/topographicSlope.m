@@ -77,7 +77,18 @@ else
     % check if R contains a ProjectedCRS, which contains the projection and
     % the ellipsoid
     if any(contains(fieldnames(R),'ProjectedCRS')) && ~isempty(R.ProjectedCRS)
-        refEllipsoid = R.ProjectedCRS.GeographicCRS.Spheroid;
+        % pathological case for MODIS sinuosoid, assume authalic sphere
+        % when ellipsoid is empty
+        if isempty(R.ProjectedCRS.GeographicCRS)
+            
+            refEllipsoid = referenceEllipsoid;
+            refEllipsoid.Name = 'Authalic Spheroid';
+            refEllipsoid.LengthUnit = 'meter';
+            refEllipsoid.SemimajorAxis = 6371007.181;
+            refEllipsoid.SemiminorAxis = 6371007.181;
+        else
+            refEllipsoid = R.ProjectedCRS.GeographicCRS.Spheroid;
+        end
     elseif contains(class(proj),'projcrs')
         refEllipsoid = proj.GeographicCRS.Spheroid;
     else % proj is a projection structure

@@ -209,7 +209,12 @@ mind = prctile(D(:),.5);
 D(D<mind) = mind;
 
 % smooth 3D H & D
-kernelSize = round(max(3,length(A)/(128/5))); % 3x3x3 minimum, 5x5x5 if nHorz=128
+%kernelSize = round(max(3,length(A)/(128/5))); % 3x3x3 minimum, 5x5x5 if nHorz=128
+kernelSize = 3;
+if nHorz >= 128
+    kernelSize= 5;
+end
+
 H = smooth3(H,'gaussian',kernelSize);
 D = smooth3(D,'gaussian',kernelSize);
 
