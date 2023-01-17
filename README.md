@@ -1,15 +1,20 @@
-# SPIRES
+# Snow Property Inversion from Remote Sensing (SPIReS)
 
-Snow Property Inversion from Remote Sensing (SPIReS)
+## Landsat 8 OLI
+To run an example scence from 20160426 for p42r34, download the zip and m file (2.2 GB) from:
+https://snow.ucsb.edu/products/SPIRES/Landsat8/example/
 
-2001-2019 Sierra data at (ftp:// links don't work because of [GitHub markdown bug](https://github.com/eedeebee/github-markdown-ftp-bug)): ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/Sierra/
+run L8_spires_example.m from MATLAB. Tested using R2022B. This latest version of MATLAB will produce some warnings about pixcenters that can be ignored.
+
+## MODIS
+2001-2019 Sierra data at: https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/
 
 Example to run one year over the Sierra Nevada USA region. Requires MATLAB + Parallel Computing Toolbox
 
 1. Download example data (103GB),
-ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/Sierra/ExampleData
+https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/
 
-2. Checkout the code, https://github.com/edwardbair/SPIRES.git
+2. Checkout the code, [https://github.com/edwardbair/SPIRES.git] (https://github.com/edwardbair/SPIRES.git)
 
 3. Start a MATLAB session
 
@@ -47,6 +52,6 @@ The minimum amount of time that'll work for smoothSPIREScube is 1 calendar mont
 
 Reference:
 
-Bair, E.H, Stillinger, T., and Dozier J (in press), Snow Property Inversion from Remote Sensing (SPIReS): A Generalized Multispectral Unmixing Approach with Examples from MODIS and Landsat 8 OLI, IEEE TGRS, doi: 10.1109/TGRS.2020.3040328 (https://dx.doi.org/10.1109/TGRS.2020.3040328)
+Bair, E.H., Stillinger, T., and Dozier, J. (2021) Snow Property Inversion from Remote Sensing (SPIReS), IEEE Transactions on Remote Sensing and Geoscience, doi: 10.1109/TGRS.2020.3040328
 
-NB 2020-10-27
+NB 2023-01-17
