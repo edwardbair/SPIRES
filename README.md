@@ -5,11 +5,9 @@
 1. To run an example scence from 20160426 for p42r34, download the zip and m file (2.2 GB) from:
 https://snow.ucsb.edu/products/SPIRES/Landsat8/example/
 
-2. Checkout the code, [https://github.com/edwardbair/SPIRES.git] (https://github.com/edwardbair/SPIRES.git)
+2. Checkout the code, https://github.com/edwardbair/SPIRES.git
 
-3. Add the code directory and all its subdirectories to your MATLAB path,
-
-"addpath(genpath([location where you checked out the code to]))"
+3. Add the code directory and all its subdirectories to your MATLAB path, "addpath(genpath([location where you checked out the code to]))"
 
 4. run L8_spires_example.m from MATLAB. Tested using R2022B. This latest version of MATLAB will produce some warnings about pixcenters that can be ignored.
 
@@ -21,7 +19,7 @@ Example to run one year over the Sierra Nevada USA region. Requires MATLAB + Par
 1. Download example data (103GB),
 https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/
 
-2. Checkout the code, [https://github.com/edwardbair/SPIRES.git] (https://github.com/edwardbair/SPIRES.git)
+2. Checkout the code, https://github.com/edwardbair/SPIRES.git
 
 3. Start a MATLAB session
 
