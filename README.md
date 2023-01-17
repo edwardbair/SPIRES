@@ -4,19 +4,19 @@ Snow Property Inversion from Remote Sensing (SPIReS)
 
 -----Landsat 8 OLI--------
 To run an example scence from 20160426 for p42r34, download the zip and m file from:
-ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/Landsat8/example
+[ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/Landsat8/example/] (ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/Landsat8/example/)
 
 run L8_spires_example.m from MATLAB. Tested using R2022B. This latest version of MATLAB will produce some warnings about pixcenters that can be ignored.
 
 ------MODIS---------
-2001-2019 Sierra data at (ftp:// links don't work because of [GitHub markdown bug](https://github.com/eedeebee/github-markdown-ftp-bug)): ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/MODIS/Sierra/
+2001-2019 Sierra data at: [ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/MODIS/Sierra/] (ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/MODIS/Sierra/)
 
 Example to run one year over the Sierra Nevada USA region. Requires MATLAB + Parallel Computing Toolbox
 
 1. Download example data (103GB),
-ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/MODIS/Sierra/ExampleData
+[ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/MODIS/Sierra/ExampleData] (ftp://ftp.snow.ucsb.edu/pub/org/snow/products/SPIRES/MODIS/Sierra/ExampleData)
 
-2. Checkout the code, https://github.com/edwardbair/SPIRES.git
+2. Checkout the code, [https://github.com/edwardbair/SPIRES.git] (https://github.com/edwardbair/SPIRES.git)
 
 3. Start a MATLAB session
 
