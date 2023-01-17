@@ -23,9 +23,7 @@ https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/
 
 3. Start a MATLAB session
 
-4. Add the code directory and all its subdirectories to your MATLAB path,
-
-"addpath(genpath([location where you checked out the code to]))"
+4. Add the code directory and all its subdirectories to your MATLAB path, "addpath(genpath([location where you checked out the code to]))"
 
 5. Load the example inputs, i.e. "load Sierra_example_inputs.mat" 
 
