@@ -1,10 +1,17 @@
 # Snow Property Inversion from Remote Sensing (SPIReS)
 
 ## Landsat 8 OLI
-To run an example scence from 20160426 for p42r34, download the zip and m file (2.2 GB) from:
+
+1. To run an example scence from 20160426 for p42r34, download the zip and m file (2.2 GB) from:
 https://snow.ucsb.edu/products/SPIRES/Landsat8/example/
 
-run L8_spires_example.m from MATLAB. Tested using R2022B. This latest version of MATLAB will produce some warnings about pixcenters that can be ignored.
+2. Checkout the code, [https://github.com/edwardbair/SPIRES.git] (https://github.com/edwardbair/SPIRES.git)
+
+3. Add the code directory and all its subdirectories to your MATLAB path,
+
+"addpath(genpath([location where you checked out the code to]))"
+
+4. run L8_spires_example.m from MATLAB. Tested using R2022B. This latest version of MATLAB will produce some warnings about pixcenters that can be ignored.
 
 ## MODIS
 2001-2019 Sierra data at: https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/
