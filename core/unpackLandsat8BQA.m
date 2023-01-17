@@ -1,21 +1,24 @@
-function [ S ] = unpackLandsat8BQA( LS8_BQA, datatype )
+function S = unpackLandsat8BQA( LS8_BQA, datatype )
 
 %unpack the bit-packed Quality Assurance (QA) layer in Landsat 8
-% Operatioal Land Imager (OLI) files. 
+% Operatioal Land Imager (OLI) files.
 %
-% replaced precollection w/ Collection 2, NB 6/8/21
+% replaced precollection w/ Collection 2, NB 6/8/21, add HLS 8/27/22
 %
 %   from USGS Landsat 8 webstie
 %   http://landsat.usgs.gov/L8QualityAssessmentBand.php
+% and v 1.4 of HLS
+% https://hls.gsfc.nasa.gov/wp-content/uploads/2019/01/HLS.v1.4.UserGuide_draft_ver3.1.pdf
 %
 % Input
 %    LS8_BQA - BQA variable read from GetLandsat8
-%               16 bit Qa file (.tif)
+%               16 bit Qa file (.tif) or HDF file for HLS v 1.4
 %   datatype - charater sting to specify which format the landsat data is
-%   in 'precollection' or 'collection1'
+%   in 'precollection' or 'collection1', 'collection2', or 'HLS'
 %
 %
 % Output
+% depends on input but here's for collection 1
 %   S - structure with the following fields  ( bit # for reference )
 %       fill - Designated Fill QA - Bit 0
 %       frame - Dropped Frame QA - Bit 1
@@ -45,40 +48,48 @@ function [ S ] = unpackLandsat8BQA( LS8_BQA, datatype )
 %           (67-100 percent confidence).
 
 switch lower(datatype)
-    
+
+    case 'hls' %see spec on p21 of 
+        % https://hls.gsfc.nasa.gov/wp-content/uploads/2019/01/HLS.v1.4.UserGuide_draft_ver3.1.pdf
+
+        flagname = {'cirrus','cloud','adjacentCloud','cloudShadow','snowIce','water','aerosolQuality'};
+        datatype = {'logical','logical','logical','logical','logical','logical','uint8'};
+        nbits = [1 1 1 1 1 1 2];
+        bitPosition = [0 1 2 3 4 5 6];
+
     case 'collection2'
-        
-flagname = {'fill','dilatedCloud','cirrus','cloud','cloudShadow',...
-    'snow','clear','water','cloudConfidence','cloudShadowConfidence','snowIceConfidence','cirrusConfidence'};
-datatype = {'logical','logical','logical','logical','logical','logical',...
-    'logical','logical','uint8','uint8','uint8','uint8'};
-nbits = [1 1 1 1 1 1 1 1 2 2 2 2];
-bitPosition = [0 1 2 3 4 5 6 7 8 10 12 14];
+
+        flagname = {'fill','dilatedCloud','cirrus','cloud','cloudShadow',...
+            'snow','clear','water','cloudConfidence','cloudShadowConfidence','snowIceConfidence','cirrusConfidence'};
+        datatype = {'logical','logical','logical','logical','logical','logical',...
+            'logical','logical','uint8','uint8','uint8','uint8'};
+        nbits = [1 1 1 1 1 1 1 1 2 2 2 2];
+        bitPosition = [0 1 2 3 4 5 6 7 8 10 12 14];
 
     case 'collection1'
-        
+
         flagname = {'fill','terrainOcclusion','saturation','cloud',...
-    'cloudConfidence','cloudShadowConfidence','snow_iceConfidence','cirrusConfidence'};
-datatype = {'logical','logical','uint8','logical','uint8','uint8',...
-    'uint8','uint8'};
-nbits = [1 1 2 1 2 2 2 2];
-bitPosition = [0 1 2 4 5 7 9 11];
+            'cloudConfidence','cloudShadowConfidence','snow_iceConfidence','cirrusConfidence'};
+        datatype = {'logical','logical','uint8','logical','uint8','uint8',...
+            'uint8','uint8'};
+        nbits = [1 1 2 1 2 2 2 2];
+        bitPosition = [0 1 2 4 5 7 9 11];
 
     otherwise
         error('cannot unpack LS8 data')
-        
+
 end
 
-N = LS8_BQA; % original 16-bit integers
+N = LS8_BQA; 
 
 I = 2.^nbits-1;
 for k=1:length(flagname)
-        bitsToConsider = bitshift(N,-bitPosition(k));
-        if strcmp(datatype{k},'logical')
-            S.(flagname{k}) = bitand(bitsToConsider,I(k))>0;
-        else
-            S.(flagname{k}) = cast(bitand(bitsToConsider,I(k)),datatype{k});
-        end
+    bitsToConsider = bitshift(N,-bitPosition(k));
+    if strcmp(datatype{k},'logical')
+        S.(flagname{k}) = bitand(bitsToConsider,I(k))>0;
+    else
+        S.(flagname{k}) = cast(bitand(bitsToConsider,I(k)),datatype{k});
+    end
 end
 
 end

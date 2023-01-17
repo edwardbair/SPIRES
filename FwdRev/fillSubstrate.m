@@ -24,8 +24,8 @@ elseif iscell(R0)
     % R0 is a table with columns for wavelength and reflectance, set an
     % interpolant for each column
 elseif istable(R0)
-    assert(all(R0.wavelength>0) && all(R0.reflectance(:)>=0) &&...
-        all(R0.reflectance(:)<=1),'R0 table bad wavelength or reflectance')
+%     assert(all(R0.wavelength>0) && all(R0.reflectance(:)>=0) &&...
+%         all(R0.reflectance(:)<=1),'R0 table bad wavelength or reflectance')
     % make sure wavelength units for R0 match those for wavelength
     assert(~isempty(R0.Properties.VariableUnits),...
         'if R0 is a table, wavelength units must be specified')

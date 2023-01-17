@@ -9,12 +9,11 @@ mask0=[];
 if nargin==4
     mask0=varargin{1};
 end
-    
 
-dvisflag=false;
 vars={'snow_fraction','grain_size','dust','albedo'};
 info=h5info(infiles{1});
 
+dvisflag=false;
 for i=1:length(info.Groups.Groups.Datasets)
     if strcmp(info.Groups.Groups.Datasets(i).Name,'deltavis')
         dvisflag=true;
@@ -24,20 +23,29 @@ end
 
 [x,y]=worldGrid(rrb);
 [lat,lon]=projinv(rrb.ProjectedCRS,x,y);
-dy=-2;
-dx=2;
-y1=ceil(lat(1,1));
-y2=floor(lat(end,1));
-x1=ceil(lon(1,1));
-x2=floor(lon(1,end));
-lat_l=y1:dy:y2;
-lon_l=x1:dx:x2;
 
-[x,y]=projfwd(rrb.ProjectedCRS,mean(lat_l)*ones(size(lon_l)),lon_l);
-[clon,~]=worldToIntrinsic(rrb,x,y);
+%     dy=-2;
+%     dx=2;
+%     y1=ceil(lat(1,1));
+%     y2=floor(lat(end,1));
+%     x1=ceil(lon(1,1));
+%     x2=floor(lon(1,end));    
+%     lat_l=y1:dy:y2;
+%     lon_l=x1:dx:x2;
 
-[x,y]=projfwd(rrb.ProjectedCRS,lat_l,mean(lon_l)*ones(size(lat_l)));
-[~,rlat]=worldToIntrinsic(rrb,x,y);
+    y1=lat(1,1);
+    y2=lat(end,1);
+    x1=lon(1,1);
+    x2=lon(1,end);    
+    lat_l=linspace(y1,y2,4);
+    lon_l=linspace(x1,x2,4);
+    
+    [x,y]=projfwd(rrb.ProjectedCRS,mean(lat_l)*ones(size(lon_l)),lon_l);
+    [clon,~]=worldToIntrinsic(rrb,x,y);
+    
+    [x,y]=projfwd(rrb.ProjectedCRS,lat_l,mean(lon_l)*ones(size(lat_l)));
+    [~,rlat]=worldToIntrinsic(rrb,x,y);
+
 cm=colormap(parula);
 close;
 cm(1,:)=[0.5 0.5 0.5];
@@ -62,7 +70,7 @@ spmd
             set(gca,'XTick',clon,'XTickLabel',num2str(lon_l'))
         end
         c=colorbar('Location','south');
-        c.Position(1)=c.Position(1)+0.25;
+%         c.Position(1)=c.Position(1)+0.25;
         c.Position(2)=c.Position(2)+0.05;
         c.Position(3)=c.Position(3)-0.16;
         if j==1
@@ -88,6 +96,7 @@ spmd
             caxis([0.4 0.9]);
         end
     end
+    c.FontSize=25;
 end
 frames={};
 
@@ -196,14 +205,16 @@ for ii=1:size(infiles,1)
                 text(0,0.25,datestr(matdates_i),'units','normalized',...
                     'FontSize',25);
             end
+        set(gca,'FontSize',25);
+        end
+%         child=get(gcf,'children');
+%         child=child.Children;
+%         for y = 1:length(child)
+%             chi=child(y);
+%             set(chi, 'fontsize', 25);
+%         end
 
-        end
-        child=get(gcf,'children');
-        child=child.Children;
-        for y = 1:length(child)
-            chi=child(y);
-            set(chi, 'fontsize', 25);
-        end
+
         frame=getframe(gcf);
         %parfor ensures frame order will be correct
         frames= [frames, frame];
