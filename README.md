@@ -51,7 +51,7 @@ In this case, h08v04, h09v04, and h08v05 are mosaiced and cropped to the Sierra 
 
 Running the full year will take a long time and a lot of RAM, depending on the number of cores used. Using 60 AMD EPYC cores, plan on about 6 hours and about 400GB RAM, or about 7 GB RAM/core. For testing, you can run with a single core.
 
-The minimum amount of time that'll work for smoothSPIREScube is 1 calendar month, i.e dom 1 through 28 to 31, but the smoothing works best over a few months. You can increase "tolval" to speed up computations and decrease quality. You're smart, you'll figure it out.
+The minimum amount of time that'll work for smoothSPIREScube is 1 calendar month, i.e dom 1 through 28 to 31, but the smoothing needs a full water year. You can increase "tolval" to speed up computations and decrease quality. You're smart, you'll figure it out.
 
 Reference:
 
