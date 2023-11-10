@@ -43,8 +43,14 @@ switch proj
         mstruct = defaultm(proj);
         for k=1:nFields
             thisfield = info.Attributes(k).Name;
-            
-            if ~(strcmpi(thisfield,'mapprojection') ||...
+            if strcmpi(thisfield,'CRSstring') %put CRSstring into rasterref
+                try
+                    hdr.RasterReference.ProjectedCRS=projcrs(info.Attributes(k).Value);
+                catch
+                    warning('could not parse %s into ProjectedCRS, skipping',...
+                        thisfield)
+                end
+            elseif ~(strcmpi(thisfield,'mapprojection') ||...
                     strcmpi(thisfield,'referencingmatrix'))
                 v=info.Attributes(k).Value;
                 if iscell(v) % problem with char stored as cell in PC
