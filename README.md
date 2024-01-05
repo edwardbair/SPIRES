@@ -21,9 +21,7 @@ For example, for h09v04, the R0 file is https://snow.ucsb.edu/products/SPIRES/MO
 
 3. Checkout the code, https://github.com/edwardbair/SPIRES.git
 
-https://github.com/edwardbair/SPIRES/blob/master/RunScripts/run_batch_spires_example.sh
-
-8. Adjust "RunScripts/run_batch_spires_tlun_himat.sh"
+4. Adjust "RunScripts/run_batch_spires_example.sh"
    l9 - codedir - where you checout code to
    l10 - mccmfile - where the .net file in lives, i.e., https://github.com/edwardbair/SPIRES/blob/master/MccM/net.mat
    l11 - Ffile - lookup table, i.e., https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/lut_modis_b1to7_3um_dust.mat
