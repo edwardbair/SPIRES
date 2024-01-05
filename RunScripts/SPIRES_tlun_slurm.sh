@@ -19,4 +19,4 @@
 
 ## Command(s) to run:
 
-./run_batch_spires_tlun.sh
+./run_batch_spires_example.sh
