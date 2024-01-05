@@ -22,13 +22,14 @@ For example, for h09v04, the R0 file is https://snow.ucsb.edu/products/SPIRES/MO
 3. Checkout the code, https://github.com/edwardbair/SPIRES.git
 
 4. Adjust "RunScripts/run_batch_spires_example.sh"
-   l9 - codedir - where you checout code to
-   l10 - mccmfile - where the .net file in lives, i.e., https://github.com/edwardbair/SPIRES/blob/master/MccM/net.mat
-   l11 - Ffile - lookup table, i.e., https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/lut_modis_b1to7_3um_dust.mat
-   l12 - HDF MOD09GA reflectance files, i.e. https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/mod09ga/
-   l15-20 - paths to inputs from 1.
-   l 24 - # of cores for parpool
-   l 27-41 - keep as is
+<br>   l9 - codedir - where you checout code to
+
+<br>   l10 - mccmfile - where the .net file in lives, i.e., https://github.com/edwardbair/SPIRES/blob/master/MccM/net.mat
+<br>   l11 - Ffile - lookup table, i.e.,  https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/lut_modis_b1to7_3um_dust.mat
+<br>   l12 - HDF MOD09GA reflectance files, i.e.  https://snow.ucsb.edu/products/SPIRES/MODIS/Sierra/ExampleData/mod09ga/
+<br>   l15-20 - paths to inputs from 1.  
+<br>   l 24 - # of cores for parpool  
+<br>   l 27-41 - keep as is  
 
    l 44 adjust WYs if needed
    l 47 adjust tiles if needed
