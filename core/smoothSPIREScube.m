@@ -192,6 +192,38 @@ else
     newweights=out.weights;
     newweights(isnan(out.grainradius) | out.fsca==0)=0;
 
+    %nearest neighbor interp. for areas with fsca, but all nan grain size or dust 
+    anygrain=any(out.grainradius,3);
+    anydust=any(out.dust,3);
+    
+    %fsca but no grain size values
+    t=~anygrain & anyfsca;
+    [r,c]=find(t);
+    for i=1:length(r)
+        X=[c(i),r(i)];
+        [r2,c2]=find(anygrain);
+        Y=[c2,r2];
+        d=pdist2(X,Y);
+        [~,idm]=min(d);
+        rgfill=squeeze(out.grainradius(r2(idm),c2(idm),:));
+        out.grainradius(r(i),c(i),:)=rgfill;
+    end
+    
+    %fsca but no dust values
+    t=~anydust & anyfsca;
+    [r,c]=find(t);
+    for i=1:length(r)
+        X=[c(i),r(i)];
+        [r2,c2]=find(anydust);
+        Y=[c2,r2];
+        d=pdist2(X,Y);
+        [~,idm]=min(d);
+        dustfill=squeeze(out.dust(r2(idm),c2(idm),:));
+        out.dust(r(i),c(i),:)=dustfill;
+    end
+    
+
+
     if fixpeak % set values after peak grain radius to peak
         N=size(out.grainradius);
         %reshape to days x pixels
@@ -219,7 +251,13 @@ else
             maxFixedDays=40;%days
             %set all days prior to meltOutday-maxFixedDays to nan
             rgvec_t(1:(meltOutday-maxFixedDays))=nan;
-            [~,maxDay]=max(rgvec_t,[],'omitnan');
+            %find the max day & val
+            [gs_maxVal,maxDay]=max(rgvec_t,[],'omitnan');
+            %but if its nan, use the latest measured 
+            if isnan(gs_maxVal)
+                maxDay=find(~isnan(rgvec),1,'last');
+            end
+
             endDay=length(rgvec)-Nd;
 
             %set those days to (near) max grain size
@@ -258,6 +296,11 @@ else
 
             %use dust value from max rg day
             dval=dustvec(maxDay);
+            
+            %but if that value is nan, use max dust val
+            if isnan(dval)
+                dval=max(dustvec,[],'omitnan');
+            end
 
             %set dust after those days to value on maxday
             dustvec(ind)=dval;
