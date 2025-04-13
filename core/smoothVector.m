@@ -11,7 +11,10 @@ function yy=smoothVector(x,y,w,p)
     w=double(w);
 
     t=~isnan(y);
-    if sum(y,'omitnan') == 0 || nnz(t)<2 || nnz(w>0) < 2  
+
+   
+    if sum(y,'omitnan') == 0 || nnz(t)<2 || nnz(w>0) < 2  || ...
+            nnz(~isnan(y(w>0))) < 2
                 yy = zeros(size(y));
     else
         F=fit(x,y,'smoothingspline',...

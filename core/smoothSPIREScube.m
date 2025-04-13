@@ -257,7 +257,7 @@ else
             if isnan(gs_maxVal)
                 maxDay=find(~isnan(rgvec),1,'last');
             end
-
+           
             endDay=length(rgvec)-Nd;
 
             %set those days to (near) max grain size
@@ -268,7 +268,7 @@ else
 
             %smooth up to maxDay
             ids=1:maxDay-1;
-            
+
             %set 1st day to min, may be set to nan later, but helps w/
             %keeping spline in check
             rgvec(1)=mingrainradius;
@@ -310,7 +310,7 @@ else
             weightsvec(1)=1;
             %smooth up until maxday
             dustvec(ids)=smoothVector(ids',dustvec(ids),...
-                weightsvec(ids),0.1); 
+                weightsvec(ids),0.1);
             dust(:,i)=taperVector(dustvec,Nd,mindust);
         end
         %put back into cube
